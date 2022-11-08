@@ -20,6 +20,9 @@
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
  * @author     makewebbetter <webmaster@makewebbetter.com>
  */
+
+require_once(plugin_dir_path(__DIR__).'const.php');
+
 class HubWooContactProperties {
 
 	/**
@@ -180,8 +183,8 @@ class HubWooContactProperties {
 			);
 			// skus bought details.
 			$values[] = array(
-				'name'        => 'skus_bought',
-				'displayName' => __( 'SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
+				'name'        => site_prefix.'skus_bought',
+				'displayName' => __( site_prefix_u.'SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 			// roi tracking.
 			$values[] = array(
@@ -222,8 +225,8 @@ class HubWooContactProperties {
 	public static function _get_subs_groups( $values = array() ) {
 
 		$values[] = array(
-			'name'        => 'subscriptions_details',
-			'displayName' => __( 'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
+			'name'        => site_prefix.'subscriptions_details',
+			'displayName' => __( site_prefix_u.'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
 		);
 		return apply_filters( 'hubwoo_subs_groups', $values );
 	}
@@ -259,7 +262,27 @@ class HubWooContactProperties {
 		return apply_filters( 'hubwoo_active_groups_properties', $active_groups_properties );
 	}
 
-	/**
+    /**
+     * Create custom log.
+     *
+     * @param  string $message     hubspot log message.
+     */
+    public function create_custom_log( $message ) {
+        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+
+        if ( ! is_dir( $log_dir ) ) {
+
+            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+        }
+
+        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
+            $message . PHP_EOL;
+
+        file_put_contents( $log_dir, $log, FILE_APPEND );
+    }
+
+
+    /**
 	 * Filter extra properties to avaoid error on hubspot.
 	 *
 	 * @return only created properties
@@ -273,6 +296,8 @@ class HubWooContactProperties {
 
 		$active_groups = $this->get_active_groups();
 
+		//$this->create_custom_log('$active_groups: '.print_r($active_groups, true));
+
 		if ( is_array( $active_groups ) && count( $active_groups ) ) {
 
 			foreach ( $active_groups as $active_group ) {
@@ -284,11 +309,15 @@ class HubWooContactProperties {
 			}
 		}
 
+        //$this->create_custom_log('$active_groups_properties: '.print_r($active_groups_properties, true));
+
 		if ( ! empty( $active_groups_properties ) ) {
 
 			$group_name = '';
 
 			$created_properties = get_option( 'hubwoo-properties-created', array() );
+
+            //$this->create_custom_log('$created_properties: '.print_r($created_properties, true));
 
 			foreach ( $active_groups_properties as $group_name_key => $single_group_property ) {
 
@@ -296,17 +325,24 @@ class HubWooContactProperties {
 
 				$filtered_properties = array();
 
+                //$this->create_custom_log('$group_name_zzz: '.$group_name);
+
 				foreach ( $single_group_property as $single_property ) {
 
-					if ( isset( $single_property['name'] ) && in_array( $single_property['name'], $created_properties ) ) {
+                    //$this->create_custom_log('$single_property: '.print_r($single_property, true));
+                    //$this->create_custom_log('$single_property[name]: ['.$single_property['name'].']');
 
+                    // Fix: disable this condition as it always return false
+					//if ( isset( $single_property['name'] ) && in_array( $single_property['name'], $created_properties ) ) {
 						$filtered_properties[] = $single_property;
-					}
+					//}
 				}
 
 				$all_filtered_properties[ $group_name ] = $filtered_properties;
 			}
 		}
+
+        //$this->create_custom_log('$all_filtered_properties: '.print_r($all_filtered_properties, true));
 
 		return apply_filters( 'hubwoo_active_groups_properties', $all_filtered_properties );
 	}
@@ -848,44 +884,44 @@ class HubWooContactProperties {
 					'fieldType' => 'textarea',
 					'formField' => false,
 				);
-			} elseif ( 'skus_bought' === $group_name ) {
+			} elseif ( site_prefix.'skus_bought' === $group_name ) {
 
 				$group_properties[] = array(
-					'name'      => 'last_skus_bought',
-					'label'     => __( 'Last SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_skus_bought',
+					'label'     => __( site_prefix_u.'Last SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'string',
 					'fieldType' => 'textarea',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'skus_bought',
-					'label'     => __( 'SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'skus_bought',
+					'label'     => __( site_prefix_u.'SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'string',
 					'fieldType' => 'textarea',
 					'formField' => false,
 				);
-			} elseif ( 'subscriptions_details' == $group_name ) {
+			} elseif ( site_prefix.'subscriptions_details' == $group_name ) {
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_order_number',
-					'label'     => __( 'Last Subscription Order Number', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_order_number',
+					'label'     => __( site_prefix_u.'Last Subscription Order Number', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'number',
 					'fieldType' => 'number',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_parent_order_number',
-					'label'     => __( 'Last Subscription Parent Order Number', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_parent_order_number',
+					'label'     => __( site_prefix_u.'Last Subscription Parent Order Number', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'number',
 					'fieldType' => 'number',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_order_status',
-					'label'     => __( 'Last Subscription Order Status', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_order_status',
+					'label'     => __( site_prefix_u.'Last Subscription Order Status', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'enumeration',
 					'fieldType' => 'select',
 					'formField' => false,
@@ -893,72 +929,72 @@ class HubWooContactProperties {
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_order_creation_date',
-					'label'     => __( 'Last Subscription Order Creation Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_order_creation_date',
+					'label'     => __( site_prefix_u.'Last Subscription Order Creation Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_order_paid_date',
-					'label'     => __( 'Last Subscription Order Paid Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_order_paid_date',
+					'label'     => __( site_prefix_u.'Last Subscription Order Paid Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_order_completed_date',
-					'label'     => __( 'Last Subscription Order Completed Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_order_completed_date',
+					'label'     => __( site_prefix_u.'Last Subscription Order Completed Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'related_last_order_creation_date',
-					'label'     => __( 'Related Last Order Creation Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'related_last_order_creation_date',
+					'label'     => __( site_prefix_u.'Related Last Order Creation Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'related_last_order_paid_date',
-					'label'     => __( 'Related Last Order Paid Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'related_last_order_paid_date',
+					'label'     => __( site_prefix_u.'Related Last Order Paid Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'related_last_order_completed_date',
-					'label'     => __( 'Related Last Order Completed Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'related_last_order_completed_date',
+					'label'     => __( site_prefix_u.'Related Last Order Completed Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_trial_end_date',
-					'label'     => __( 'Last Subscription Trial End Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_trial_end_date',
+					'label'     => __( site_prefix_u.'Last Subscription Trial End Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_next_payment_date',
-					'label'     => __( 'Last Subscription Next Payment Date', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_next_payment_date',
+					'label'     => __( site_prefix_u.'Last Subscription Next Payment Date', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'date',
 					'fieldType' => 'date',
 					'formField' => false,
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_billing_period',
-					'label'     => __( 'Last Subscription Billing Period', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_billing_period',
+					'label'     => __( site_prefix_u.'Last Subscription Billing Period', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'enumeration',
 					'fieldType' => 'select',
 					'formField' => false,
@@ -966,8 +1002,8 @@ class HubWooContactProperties {
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_billing_interval',
-					'label'     => __( 'Last Subscription Billing Interval', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_billing_interval',
+					'label'     => __( site_prefix_u.'Last Subscription Billing Interval', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'enumeration',
 					'fieldType' => 'select',
 					'formField' => false,
@@ -975,12 +1011,36 @@ class HubWooContactProperties {
 				);
 
 				$group_properties[] = array(
-					'name'      => 'last_subscription_products',
-					'label'     => __( 'Last Subscription Products', 'makewebbetter-hubspot-for-woocommerce' ),
+					'name'      => site_prefix.'last_subscription_products',
+					'label'     => __( site_prefix_u.'Last Subscription Products', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'string',
 					'fieldType' => 'textarea',
 					'formField' => false,
 				);
+
+                $group_properties[] = array(
+                    'name'      => site_prefix.'active_subscription_skus',
+                    'label'     => __( site_prefix_u.'Active Subscription SKUs', 'makewebbetter-hubspot-for-woocommerce' ),
+                    'type'      => 'string',
+                    'fieldType' => 'textarea',
+                    'formField' => false,
+                );
+
+                $group_properties[] = array(
+                    'name'      => site_prefix.'cancelled_subscription_skus',
+                    'label'     => __( site_prefix_u.'Cancelled Subscription SKUs', 'makewebbetter-hubspot-for-woocommerce' ),
+                    'type'      => 'string',
+                    'fieldType' => 'textarea',
+                    'formField' => false,
+                );
+
+                $group_properties[] = array(
+                    'name'      => site_prefix.'subscription_synced',
+                    'label'     => __( site_prefix_u.'Subscription Synced', 'makewebbetter-hubspot-for-woocommerce' ),
+                    'type'      => 'string',
+                    'fieldType' => 'textarea',
+                    'formField' => false,
+                );
 			} elseif ( 'roi_tracking' === $group_name ) {
 
 				$group_properties[] = array(

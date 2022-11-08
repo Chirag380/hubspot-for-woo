@@ -38,13 +38,15 @@ class HubWoo_Background_Process extends WP_Background_Process {
 		parent::__construct();
 	}
 
-	/**
+    /**
 	 * Handle cron healthcheck
 	 *
 	 * Restart the background process if not already running
 	 * and data exists in the queue.
 	 */
 	public function handle_cron_healthcheck() {
+
+	    //$this->create_custom_log('handle_cron_healthcheck (check is_queue_empty, then handle)');
 
 		if ( $this->is_process_running() ) {
 			// Background process already running.
@@ -71,6 +73,26 @@ class HubWoo_Background_Process extends WP_Background_Process {
 		$this->handle();
 	}
 
+
+    /**
+     * Create custom log.
+     *
+     * @param  string $message     hubspot log message.
+     */
+    public function create_custom_log( $message ) {
+        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+
+        if ( ! is_dir( $log_dir ) ) {
+
+            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+        }
+
+        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
+            $message . PHP_EOL;
+
+        file_put_contents( $log_dir, $log, FILE_APPEND );
+    }
+
 	/**
 	 * Handle
 	 *
@@ -79,21 +101,32 @@ class HubWoo_Background_Process extends WP_Background_Process {
 	 */
 	protected function handle() {
 
+	    //$this->create_custom_log('handle');
+
 		$this->lock_process();
 		$hubwoo_datasync = new HubwooDataSync();
 		do {
 
 			$users_need_syncing = $hubwoo_datasync->hubwoo_get_all_unique_user();
 
+			//$this->create_custom_log('handle $users_need_syncing: ' .count($users_need_syncing));
+
 			if ( ! count( $users_need_syncing ) ) {
+                //$this->create_custom_log('handle guest order');
 				$roles = get_option( 'hubwoo_customers_role_settings', array() );
 				if ( in_array( 'guest_user', $roles, true ) ) {
 					$order_need_syncing = $hubwoo_datasync->hubwoo_get_all_unique_user( false, 'guestOrder' );
 
+                    //$this->create_custom_log('handle guest order $order_need_syncing: '. count($order_need_syncing));
+
 					$order_chunk = array_chunk( $order_need_syncing, 20 );
+
+                    //$this->create_custom_log('handle guest order $order_chunk: '. count($order_chunk));
 
 					if ( is_array( $order_chunk ) && count( $order_chunk ) ) {
 						foreach ( $order_chunk as $order_ids ) {
+
+                            //$this->create_custom_log('handle guest order $order_ids: '. $order_ids);
 
 							$task = $this->task( $order_ids, 'orderSync' );
 							if ( $this->time_exceeded() || $this->memory_exceeded() ) {
@@ -106,9 +139,13 @@ class HubWoo_Background_Process extends WP_Background_Process {
 			} else {
 				$user_chunks = array_chunk( $users_need_syncing, 20 );
 
+                //$this->create_custom_log('handle user_chunks: ' . count($user_chunks));
+
 				if ( is_array( $user_chunks ) && count( $user_chunks ) ) {
 
 					foreach ( $user_chunks as $user_group ) {
+
+                        //$this->create_custom_log('handle user_group: ' . $user_group);
 
 						$task = $this->task( $user_group );
 
@@ -133,12 +170,16 @@ class HubWoo_Background_Process extends WP_Background_Process {
 		wp_die();
 	}
 
+
+
 	/**
 	 * Check queue.
 	 *
 	 * Check if the sync queue is empty or not.
 	 */
 	public function is_queue_empty() {
+
+	    //$this->create_custom_log('is_queue_empty');
 
 		// check here how many contacts are left without updating..
 		$hubwoo_data_sync = new hubwooDataSync();
@@ -160,6 +201,9 @@ class HubWoo_Background_Process extends WP_Background_Process {
 	 * @return bool
 	 */
 	protected function task( $item, $sync_type = 'customer' ) {
+
+	    //$this->create_custom_log('task $item: '.$item.' $sync_type: '.$sync_type);
+
 		if ( ! is_array( $item ) ) {
 			return false;
 		}

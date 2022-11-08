@@ -19,6 +19,9 @@
  * @subpackage makewebbetter-hubspot-for-woocommerce/admin
  * @author     MakeWebBetter <webmaster@makewebbetter.com>
  */
+
+require_once(plugin_dir_path(__DIR__).'const.php');
+
 class Hubwoo_Admin {
 
 	/**
@@ -503,7 +506,12 @@ class Hubwoo_Admin {
 				'display'  => esc_html__( 'Once every 5 minutes for HubSpot contacts sync', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 
-			$schedules['mwb-hubwoo-check-deals-5min'] = array(
+            $schedules['mwb-hubwoo-contacts-2min'] = array(
+                'interval' => 2 * 60,
+                'display'  => esc_html__( 'Once every 2 minutes for HubSpot contacts sync', 'makewebbetter-hubspot-for-woocommerce' ),
+            );
+
+            $schedules['mwb-hubwoo-check-deals-5min'] = array(
 				'interval' => 5 * 60,
 				'display'  => esc_html__( 'Once every 5 minutes for HubSpot real time deal sync', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
@@ -560,8 +568,8 @@ class Hubwoo_Admin {
 	public function hubwoo_subs_groups( $values ) {
 
 		$values[] = array(
-			'name'        => 'subscriptions_details',
-			'displayName' => __( 'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
+            'name'        => site_prefix.'subscriptions_details',
+            'displayName' => __( site_prefix_u.'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
 		);
 
 		return $values;
@@ -575,7 +583,7 @@ class Hubwoo_Admin {
 	 */
 	public function hubwoo_active_subs_groups( $active_groups ) {
 
-		$active_groups[] = 'subscriptions_details';
+        $active_groups[] = site_prefix.'subscriptions_details';
 
 		return $active_groups;
 	}
@@ -1997,13 +2005,35 @@ class Hubwoo_Admin {
 		return $mapped_array;
 	}
 
-	/**
+    /**
+     * Create custom log.
+     *
+     * @param  string $message     hubspot log message.
+     */
+    public static function create_custom_log( $message ) {
+        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+
+        if ( ! is_dir( $log_dir ) ) {
+
+            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+        }
+
+        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
+            $message . PHP_EOL;
+
+        file_put_contents( $log_dir, $log, FILE_APPEND );
+    }
+
+
+    /**
 	 * Updates the product whenever there is any change
 	 *
 	 * @since    1.0.0
 	 * @param bool $redirect redirect to contact page ( default = false).
 	 */
 	public static function hubwoo_schedule_sync_listener( $redirect = false ) {
+
+	    //self::create_custom_log('hubwoo_schedule_sync_listener');
 
 		$hubwoodatasync = new HubwooDataSync();
 

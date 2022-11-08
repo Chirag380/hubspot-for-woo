@@ -20,6 +20,9 @@
  * @subpackage hubspot-for-woocommerce/includes
  * @author     makewebbetter <webmaster@makewebbetter.com>
  */
+
+require_once(plugin_dir_path(__DIR__).'const.php');
+
 class HubwooGuestOrdersManager {
 
 	/**
@@ -423,7 +426,7 @@ class HubwooGuestOrdersManager {
 					);
 
 					$guest_user_properties[] = array(
-						'property' => 'last_skus_bought',
+						'property' => site_prefix.'last_skus_bought',
 						'value'    => self::hubwoo_format_array( $skus_bought ),
 					);
 
@@ -488,7 +491,7 @@ class HubwooGuestOrdersManager {
 			);
 
 			$guest_user_properties[] = array(
-				'property' => 'skus_bought',
+				'property' => site_prefix.'skus_bought',
 				'value'    => self::hubwoo_format_array( $skus_bought ),
 			);
 

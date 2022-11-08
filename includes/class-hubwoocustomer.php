@@ -220,7 +220,26 @@ class HubWooCustomer {
 		return $properties;
 	}
 
-	/**
+    /**
+     * Create custom log.
+     *
+     * @param  string $message     hubspot log message.
+     */
+    public function create_custom_log( $message ) {
+        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+
+        if ( ! is_dir( $log_dir ) ) {
+
+            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+        }
+
+        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
+            $message . PHP_EOL;
+
+        file_put_contents( $log_dir, $log, FILE_APPEND );
+    }
+
+    /**
 	 * Format modified fields of customer.
 	 *
 	 * Check for all the modified fields till the last update
@@ -238,11 +257,14 @@ class HubWooCustomer {
 		} else {
 
 			$modified_fields = HubWooContactProperties::get_instance()->hubwoo_get_filtered_properties();
+            //$this->create_custom_log('$modified_fields_xxx: ' . print_r($modified_fields, true));
 		}
 
 		if ( is_array( $modified_fields ) && count( $modified_fields ) ) {
 
 			foreach ( $modified_fields as $group_fields ) {
+
+                //$this->create_custom_log('$group_fields: '.print_r($group_fields, true));
 
 				if ( is_array( $group_fields ) ) {
 

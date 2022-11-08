@@ -417,13 +417,35 @@ if ( ! class_exists( 'WP_Background_Process' ) ) {
 			return $schedules;
 		}
 
-		/**
+        /**
+         * Create custom log.
+         *
+         * @param  string $message     hubspot log message.
+         */
+        public function create_custom_log( $message ) {
+            $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+
+            if ( ! is_dir( $log_dir ) ) {
+
+                @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+            }
+
+            $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
+                $message . PHP_EOL;
+
+            file_put_contents( $log_dir, $log, FILE_APPEND );
+        }
+
+        /**
 		 * Handle cron healthcheck
 		 *
 		 * Restart the background process if not already running
 		 * and data exists in the queue.
 		 */
 		public function handle_cron_healthcheck() {
+
+		    //$this->create_custom_log('handle_cron_healthcheck [wp-background-process]');
+
 			if ( $this->is_process_running() ) {
 				// Background process already running.
 				exit;

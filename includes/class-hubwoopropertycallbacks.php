@@ -20,6 +20,9 @@
  * @subpackage hubspot-for-woocommerce/includes
  * @author     makewebbetter <webmaster@makewebbetter.com>
  */
+
+require_once(plugin_dir_path(__DIR__).'const.php');
+
 class HubWooPropertyCallbacks {
 
 	/**
@@ -71,8 +74,8 @@ class HubWooPropertyCallbacks {
 		'billing_postal_code'                      => 'get_user_meta',
 		'billing_country'                          => 'get_user_meta',
 
-		'skus_bought'                              => 'hubwoo_user_meta',
-		'last_skus_bought'                         => 'hubwoo_user_meta',
+		site_prefix.'skus_bought'                  => 'hubwoo_user_meta',
+		site_prefix.'last_skus_bought'             => 'hubwoo_user_meta',
 
 		'categories_bought'                        => 'hubwoo_user_meta',
 		'last_categories_bought'                   => 'hubwoo_user_meta',
@@ -120,20 +123,23 @@ class HubWooPropertyCallbacks {
 		'products_bought'                          => 'hubwoo_user_meta',
 		'total_number_of_products_bought'          => 'hubwoo_user_meta',
 
-		'last_subscription_order_number'           => 'hubwoo_user_subs_data',
-		'last_subscription_parent_order_number'    => 'hubwoo_user_subs_data',
-		'last_subscription_order_status'           => 'hubwoo_user_subs_data',
-		'last_subscription_order_creation_date'    => 'hubwoo_user_subs_data',
-		'last_subscription_order_paid_date'        => 'hubwoo_user_subs_data',
-		'last_subscription_order_completed_date'   => 'hubwoo_user_subs_data',
-		'last_subscription_trial_end_date'         => 'hubwoo_user_subs_data',
-		'last_subscription_next_payment_date'      => 'hubwoo_user_subs_data',
-		'last_subscription_billing_period'         => 'hubwoo_user_subs_data',
-		'last_subscription_billing_interval'       => 'hubwoo_user_subs_data',
-		'last_subscription_products'               => 'hubwoo_user_subs_data',
-		'related_last_order_creation_date'         => 'hubwoo_user_subs_data',
-		'related_last_order_paid_date'             => 'hubwoo_user_subs_data',
-		'related_last_order_completed_date'        => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_order_number'           => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_parent_order_number'    => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_order_status'           => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_order_creation_date'    => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_order_paid_date'        => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_order_completed_date'   => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_trial_end_date'         => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_next_payment_date'      => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_billing_period'         => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_billing_interval'       => 'hubwoo_user_subs_data',
+		site_prefix.'last_subscription_products'               => 'hubwoo_user_subs_data',
+		site_prefix.'related_last_order_creation_date'         => 'hubwoo_user_subs_data',
+		site_prefix.'related_last_order_paid_date'             => 'hubwoo_user_subs_data',
+		site_prefix.'related_last_order_completed_date'        => 'hubwoo_user_subs_data',
+        site_prefix.'active_subscription_skus'                 => 'hubwoo_user_subs_data',
+        site_prefix.'cancelled_subscription_skus'              => 'hubwoo_user_subs_data',
+        site_prefix.'subscription_synced'                      => 'hubwoo_user_subs_data',
 	);
 
 	/**
@@ -278,10 +284,13 @@ class HubWooPropertyCallbacks {
 	 */
 	public function hubwoo_user_meta( $key ) {
 
+	    // disable caching
+        /*
 		if ( array_key_exists( $key, $this->_cache ) ) {
 
 			return $this->_cache[ $key ];
 		}
+        */
 
 		$order_statuses = get_option( 'hubwoo-selected-order-status', array() );
 
@@ -583,7 +592,7 @@ class HubWooPropertyCallbacks {
 
 					$this->_cache['last_products_bought'] = HubwooGuestOrdersManager::hubwoo_format_array( $last_products_bought );
 
-					$this->_cache['last_skus_bought'] = HubwooGuestOrdersManager::hubwoo_format_array( $skus_bought );
+					$this->_cache[site_prefix.'last_skus_bought'] = HubwooGuestOrdersManager::hubwoo_format_array( $skus_bought );
 
 					$this->_cache['last_categories_bought'] = HubwooGuestOrdersManager::hubwoo_format_array( $categories_bought );
 
@@ -616,7 +625,7 @@ class HubWooPropertyCallbacks {
 
 			$this->_cache['average_days_between_orders'] = floatval( array_sum( $average_days ) / $this->_cache['total_number_of_orders'] );
 
-			$this->_cache['skus_bought'] = HubwooGuestOrdersManager::hubwoo_format_array( $skus_bought );
+			$this->_cache[site_prefix.'skus_bought'] = HubwooGuestOrdersManager::hubwoo_format_array( $skus_bought );
 
 			$this->_cache['categories_bought'] = HubwooGuestOrdersManager::hubwoo_format_array( $categories_bought );
 
@@ -803,7 +812,26 @@ class HubWooPropertyCallbacks {
 		}
 	}
 
-	/**
+    /**
+     * Create custom log.
+     *
+     * @param  string $message     hubspot log message.
+     */
+    public function create_custom_log( $message ) {
+        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+
+        if ( ! is_dir( $log_dir ) ) {
+
+            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+        }
+
+        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
+            $message . PHP_EOL;
+
+        file_put_contents( $log_dir, $log, FILE_APPEND );
+    }
+
+    /**
 	 * Contact subscriptions data.
 	 *
 	 * @param  string $key for subscription properties.
@@ -817,8 +845,10 @@ class HubWooPropertyCallbacks {
 		}
 
 		if ( array_key_exists( $key, $this->_cache ) ) {
-
-			return $this->_cache[ $key ];
+		    if ($key == site_prefix.'active_subscription_skus') {
+                $this->create_custom_log('found cached key: ' . $key . ' > value: ' . $this->_cache[$key]);
+            }
+			//return $this->_cache[ $key ];
 		}
 
 		$query = new WP_Query();
@@ -826,10 +856,10 @@ class HubWooPropertyCallbacks {
 		$customer_orders = $query->query(
 			array(
 				'post_type'           => 'shop_subscription',
-				'posts_per_page'      => 1,
+				'posts_per_page'      => -1,
 				'post_status'         => 'any',
 				'orderby'             => 'date',
-				'order'               => 'desc',
+				'order'               => 'asc',
 				'fields'              => 'ids',
 				'no_found_rows'       => true,
 				'ignore_sticky_posts' => true,
@@ -842,10 +872,21 @@ class HubWooPropertyCallbacks {
 			)
 		);
 
-		// if customer have orders.
+        $this->create_custom_log('user_subs_data: '.$this->_contact_id.' ORDER: '.print_r( $customer_orders, true ));
+
+        // hold all active subs skus
+        $active_subs_skus = array();
+        // hold all cancelled subs skus
+        $cancelled_subs_skus = array();
+
+        // if customer have orders.
 		if ( is_array( $customer_orders ) && count( $customer_orders ) ) {
 
-			foreach ( $customer_orders as $counter => $order_id ) {
+            //$this->create_custom_log('user_subs_data: '.$this->_contact_id.' ORDER: '.print_r( $customer_orders, true ));
+
+            foreach ( $customer_orders as $counter => $order_id ) {
+
+                //$this->create_custom_log('order_id: '.$order_id);
 
 				// if order id not found let's check for another order.
 				if ( ! $order_id ) {
@@ -865,6 +906,8 @@ class HubWooPropertyCallbacks {
 
 				$order_items = $order->get_items();
 
+                //$this->create_custom_log('order_id: '.$order_id.'; $order_items: '.count($order_items).'; status: '.$subs_order->get_status());
+
 				if ( is_array( $order_items ) && count( $order_items ) ) {
 
 					$subs_products = array();
@@ -876,7 +919,8 @@ class HubWooPropertyCallbacks {
 
 							$item_id = $wc_order_item_product->get_product_id();
 
-							if ( get_post_status( $item_id ) == 'trash' || get_post_status( $item_id ) == false ) {
+							// still count event if product is in trash
+							if (/* get_post_status( $item_id ) == 'trash' || */get_post_status( $item_id ) == false ) {
 
 								continue;
 							}
@@ -889,87 +933,141 @@ class HubWooPropertyCallbacks {
 
 								$subs_products[] = $product_uni_name . '-' . $item_id;
 							}
+
+							// collect active/cancelled subs skus
+                            if ( $subs_order->get_status() == 'active' || $subs_order->get_status() == 'cancelled') {
+                                $product = $wc_order_item_product->get_product();
+                                $product_sku = $product->get_id();
+                                if ( $product->get_sku() ) {
+                                    $product_sku = $product->get_sku();
+                                }
+
+                                //$this->create_custom_log('order_id: '.$order_id.'; status: '.$subs_order->get_status().' sku: '.$product_sku);
+
+                                if ($subs_order->get_status() == 'active') {
+                                    $active_subs_skus[] = $product_sku;
+                                } else {
+                                    $cancelled_subs_skus[] = $product_sku;
+                                }
+                            }
+
 						}
+						else {
+						    // empty or non-product item
+                            if ( $subs_order->get_status() == 'active' ) {
+                                $active_subs_skus[] = 'UNKNOWN';
+                            } else if ( $subs_order->get_status() == 'cancelled' ) {
+                                $cancelled_subs_skus[] = 'UNKNOWN';
+                            }
+                        }
 					}
 
 					if ( count( $subs_products ) ) {
 
-						$this->_cache['last_subscription_products'] = HubwooGuestOrdersManager::hubwoo_format_array( $subs_products );
+						$this->_cache[site_prefix.'last_subscription_products'] = HubwooGuestOrdersManager::hubwoo_format_array( $subs_products );
 					}
 
 					if ( $subs_order->get_status() == 'pending-cancel' || $subs_order->get_status() == 'cancelled' ) {
 
-						$this->_cache['last_subscription_products'] = ' ';
+						$this->_cache[site_prefix.'last_subscription_products'] = ' ';
 					}
 				}
+                else {
+                    // empty order items
+                    if ( $subs_order->get_status() == 'active' ) {
+                        $active_subs_skus[] = 'UNKNOWN';
+                    } else if ( $subs_order->get_status() == 'cancelled' ) {
+                        $cancelled_subs_skus[] = 'UNKNOWN';
+                    }
+                }
 
 				$order_data = $order->get_data();
 
 				if ( ! empty( $order_data['schedule_trial_end'] ) ) {
 
-					$this->_cache['last_subscription_trial_end_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_trial_end']->getTimestamp() );
+					$this->_cache[site_prefix.'last_subscription_trial_end_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_trial_end']->getTimestamp() );
 				}
 
 				if ( ! empty( $order_data['schedule_end'] ) && $order_data['schedule_end'] instanceof WC_DateTime ) {
 
-					$this->_cache['last_subscription_next_payment_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_end']->getTimestamp() );
+					$this->_cache[site_prefix.'last_subscription_next_payment_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_end']->getTimestamp() );
 				}
 
-				$this->_cache['last_subscription_order_status'] = $subs_order->get_status();
+				$this->_cache[site_prefix.'last_subscription_order_status'] = 'wc-' . $subs_order->get_status();
 
-				$this->_cache['last_subscription_order_number'] = $subs_order->get_id();
+				$this->_cache[site_prefix.'last_subscription_order_number'] = $subs_order->get_id();
 
-				$this->_cache['last_subscription_parent_order_number'] = $subs_order->get_parent_id();
+				$this->_cache[site_prefix.'last_subscription_parent_order_number'] = $subs_order->get_parent_id();
 
 				$date_created = ! empty( $subs_order->get_date( 'date_created' ) ) ? $subs_order->get_date( 'date_created' ) : '';
 
 				if ( ! empty( $date_created ) ) {
 
-					$this->_cache['last_subscription_order_creation_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $date_created ) );
+					$this->_cache[site_prefix.'last_subscription_order_creation_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $date_created ) );
 				}
 
 				$date_paid = ! empty( $subs_order->get_date( 'date_paid' ) ) ? $subs_order->get_date( 'date_paid' ) : '';
 
 				if ( ! empty( $date_paid ) ) {
 
-					$this->_cache['last_subscription_order_paid_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $date_paid ) );
+					$this->_cache[site_prefix.'last_subscription_order_paid_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $date_paid ) );
 				}
 
 				$date_completed = ! empty( $subs_order->get_date( 'date_completed' ) ) ? $subs_order->get_date( 'date_completed' ) : '';
 
 				if ( ! empty( $date_completed ) ) {
 
-					$this->_cache['last_subscription_order_completed_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $date_completed ) );
+					$this->_cache[site_prefix.'last_subscription_order_completed_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $date_completed ) );
 				}
 
-				$last_order_creation_date = ! empty( $subs_order->get_date( 'last_order_date_created' ) ) ? $subs_order->get_date( 'last_order_date_created' ) : '';
+				$last_order_creation_date = ! empty( $subs_order->get_date( site_prefix.'last_order_date_created' ) ) ? $subs_order->get_date( site_prefix.'last_order_date_created' ) : '';
 
 				if ( ! empty( $last_order_creation_date ) ) {
 
-					$this->_cache['related_last_order_creation_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $last_order_creation_date ) );
+					$this->_cache[site_prefix.'related_last_order_creation_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $last_order_creation_date ) );
 				}
 
-				$last_order_paid_date = ! empty( $subs_order->get_date( 'last_order_date_paid' ) ) ? $subs_order->get_date( 'last_order_date_paid' ) : '';
+				$last_order_paid_date = ! empty( $subs_order->get_date( site_prefix.'last_order_date_paid' ) ) ? $subs_order->get_date( 'last_order_date_paid' ) : '';
 
 				if ( ! empty( $last_order_date_paid ) ) {
 
-					$this->_cache['related_last_order_paid_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $last_order_paid_date ) );
+					$this->_cache[site_prefix.'related_last_order_paid_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $last_order_paid_date ) );
 				}
 
-				$last_order_completion_date = ! empty( $subs_order->get_date( 'last_order_date_completed' ) ) ? $subs_order->get_date( 'last_order_date_completed' ) : '';
+				$last_order_completion_date = ! empty( $subs_order->get_date( site_prefix.'last_order_date_completed' ) ) ? $subs_order->get_date( site_prefix.'last_order_date_completed' ) : '';
 
 				if ( ! empty( $last_order_completion_date ) ) {
 
-					$this->_cache['related_last_order_completed_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $last_order_completion_date ) );
+					$this->_cache[site_prefix.'related_last_order_completed_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( strtotime( $last_order_completion_date ) );
 				}
 
-				$this->_cache['last_subscription_billing_period'] = ! empty( $subs_order->get_billing_period() ) ? $subs_order->get_billing_period() : '';
+				$this->_cache[site_prefix.'last_subscription_billing_period'] = ! empty( $subs_order->get_billing_period() ) ? $subs_order->get_billing_period() : '';
 
-				$this->_cache['last_subscription_billing_interval'] = ! empty( $subs_order->get_billing_interval() ) ? $subs_order->get_billing_interval() : '';
+				$this->_cache[site_prefix.'last_subscription_billing_interval'] = ! empty( $subs_order->get_billing_interval() ) ? $subs_order->get_billing_interval() : '';
 			}
-		}
+        }
 
-		if ( isset( $this->_cache[ $key ] ) ) {
+        if (count($active_subs_skus)) {
+            $this->_cache[site_prefix.'active_subscription_skus'] = HubwooGuestOrdersManager::hubwoo_format_array( $active_subs_skus );
+        } else {
+            // no active subs
+            $this->_cache[site_prefix.'active_subscription_skus'] = ' ';
+        }
+
+        if (count($cancelled_subs_skus)) {
+            $this->_cache[site_prefix.'cancelled_subscription_skus'] = HubwooGuestOrdersManager::hubwoo_format_array( $cancelled_subs_skus );
+        } else {
+            // no cancelled subs
+            $this->_cache[site_prefix.'cancelled_subscription_skus'] = ' ';
+        }
+
+        // mark this _subscription_synced as 'Yes' anyway
+        $this->_cache[site_prefix.'subscription_synced'] = 'Yes';
+
+        //$this->create_custom_log('active: '.print_r( $active_subs_skus, true ));
+        //$this->create_custom_log('cancelled: '.print_r( $cancelled_subs_skus, true ));
+
+        if ( isset( $this->_cache[ $key ] ) ) {
 
 			return $this->_cache[ $key ];
 		}

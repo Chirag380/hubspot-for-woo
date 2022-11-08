@@ -12,6 +12,8 @@
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
  */
 
+require_once(plugin_dir_path(__DIR__).'const.php');
+
 if ( ! class_exists( 'Hubwoo' ) ) {
 
 	/**
@@ -278,6 +280,9 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 			$plugin_public = new Hubwoo_Public( $this->get_plugin_name(), $this->get_version() );
 
 			if ( $this->is_plugin_enable() == 'yes' ) {
+
+			    // ensure the cron schedule is running
+                $this->loader->add_action( 'init', $plugin_public, 'hubwoo_ensure_cron_schedule' );
 
 				$this->loader->add_action( 'profile_update', $plugin_public, 'hubwoo_woocommerce_save_account_details' );
 
@@ -739,15 +744,15 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 			wp_clear_scheduled_hook( 'hubwoo_product_sync_background' );
 			wp_clear_scheduled_hook( 'hubwoo_products_status_background' );
 			wp_clear_scheduled_hook( 'hubwoo_products_sync_background' );
-			/**
-			Deleting all of the meta data of the users and posts
+
+			// deleting all of the meta data of the users and posts
 			delete_metadata( 'user', 0, 'hubwoo_pro_user_data_change', '', true );
 			delete_metadata( 'post', 0, 'hubwoo_pro_guest_order', '', true );
 			delete_metadata( 'post', 0, 'hubwoo_ecomm_deal_id', '', true );
 			delete_metadata( 'post', 0, 'hubwoo_ecomm_pro_id', '', true );
 			delete_metadata( 'post', 0, 'hubwoo_ecomm_deal_created', '', true );
 			delete_metadata( 'post', 0, 'hubwoo_product_synced', '', true );
-			*/
+
 			if ( $redirect ) {
 				wp_safe_redirect( admin_url( 'admin.php?page=hubwoo' ) );
 			} else {
@@ -775,7 +780,7 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 
 					foreach ( $hubwoo_groups as $single_group ) {
 
-						if ( 'subscriptions_details' == $single_group['name'] && ! self::is_subs_group_setup_completed() ) {
+						if ( (site_prefix.'subscriptions_details') == $single_group['name'] && ! self::is_subs_group_setup_completed() ) {
 
 							$final_groups[] = array(
 								'detail' => $single_group,

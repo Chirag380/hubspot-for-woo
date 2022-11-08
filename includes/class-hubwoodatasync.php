@@ -38,6 +38,8 @@ class HubwooDataSync {
 	 */
 	public function dispatch() {
 
+	    //$this->create_custom_log('dispatch');
+
 		global $hubwoobgprocess;
 		$hubwoobgprocess->handle_cron_healthcheck();
 	}
@@ -323,15 +325,35 @@ class HubwooDataSync {
 		$hubwoobgprocess->dispatch();
 	}
 
-	/**
+    /**
+     * Create custom log.
+     *
+     * @param  string $message     hubspot log message.
+     */
+    public function create_custom_log( $message ) {
+        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+
+        if ( ! is_dir( $log_dir ) ) {
+
+            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+        }
+
+        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
+            $message . PHP_EOL;
+
+        file_put_contents( $log_dir, $log, FILE_APPEND );
+    }
+
+    /**
 	 * Starts Scheduling once
 	 * the data has been retrieved
 	 */
 	public function hubwoo_start_schedule() {
+        $this->create_custom_log('hubwoo_start_schedule');
 
 		$hubwoo_unique_users = $this->hubwoo_get_all_unique_user( true );
 
-		if ( $hubwoo_unique_users ) {
+        if ( $hubwoo_unique_users ) {
 			$this->schedule_background_task();
 		}
 	}
@@ -361,7 +383,10 @@ class HubwooDataSync {
 					continue;
 				}
 				$properties      = $hubwoo_customer->get_contact_properties();
+                //self::create_custom_log('$properties: '.print_r($properties, true));
 				$user_properties = $hubwoo_customer->get_user_data_properties( $properties );
+
+				//self::create_custom_log('$user_properties: '.print_r($user_properties, true));
 				$properties_data = array(
 					'email'      => $email,
 					'properties' => $user_properties,
