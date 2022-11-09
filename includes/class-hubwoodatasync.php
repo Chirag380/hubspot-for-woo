@@ -17,32 +17,8 @@
  *
  * @package    makewebbetter-hubspot-for-woocommerce
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
  */
 class HubwooDataSync {
-
-	/**
-	 * Class constructor.
-	 */
-	public function __construct() {
-
-		if ( ! class_exists( 'HubWoo_Background_Process' ) ) {
-
-			require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-hubwoo-background-process.php';
-		}
-	}
-
-	/**
-	 * Dispatches the
-	 * background Tasks
-	 */
-	public function dispatch() {
-
-	    //$this->create_custom_log('dispatch');
-
-		global $hubwoobgprocess;
-		$hubwoobgprocess->handle_cron_healthcheck();
-	}
 
 	/**
 	 * Retreive all of the
@@ -249,7 +225,7 @@ class HubwooDataSync {
 					if ( ! empty( $country ) ) {
 						$guest_user_properties[] = array(
 							'property' => 'country',
-							'value'    => $country,
+							'value'    => Hubwoo::map_country_by_abbr( $country ),
 						);
 					}
 
@@ -284,15 +260,24 @@ class HubwooDataSync {
 						);
 					}
 
+					$customer_new_order_flag = 'no';
+					$prop_index              = array_search( 'customer_new_order', array_column( $guest_user_properties, 'property' ) );
+
 					if ( Hubwoo_Admin::hubwoo_check_for_properties( 'order_recency_rating', 5, $guest_user_properties ) ) {
 
 						if ( Hubwoo_Admin::hubwoo_check_for_properties( 'last_order_status', get_option( 'hubwoo_no_status', 'wc-completed' ), $guest_user_properties ) ) {
 
-							$guest_user_properties[] = array(
-								'property' => 'customer_new_order',
-								'value'    => 'yes',
-							);
+							$customer_new_order_flag = 'yes';
 						}
+					}
+
+					if ( $prop_index ) {
+						$guest_user_properties[ $prop_index ]['value'] = $customer_new_order_flag;
+					} else {
+						$guest_user_properties[] = array(
+							'property' => 'customer_new_order',
+							'value'    => $customer_new_order_flag,
+						);
 					}
 
 					$guest_user_properties_data = array(
@@ -316,13 +301,13 @@ class HubwooDataSync {
 	 */
 	public function schedule_background_task() {
 
-		global $hubwoobgprocess;
-
 		delete_option( 'hubwoo_ocs_data_synced' );
 		delete_option( 'hubwoo_ocs_contacts_synced' );
 		update_option( 'hubwoo_background_process_running', true );
 
-		$hubwoobgprocess->dispatch();
+		if ( ! as_next_scheduled_action( 'hubwoo_contacts_sync_background' ) ) {
+			as_schedule_recurring_action( time(), 120, 'hubwoo_contacts_sync_background' );
+		}
 	}
 
     /**
@@ -343,8 +328,7 @@ class HubwooDataSync {
 
         file_put_contents( $log_dir, $log, FILE_APPEND );
     }
-
-    /**
+	/**
 	 * Starts Scheduling once
 	 * the data has been retrieved
 	 */
@@ -369,6 +353,8 @@ class HubwooDataSync {
 
 		// basic data function for user ids.
 		$contacts = array();
+		$role__in = get_option( 'hubwoo-selected-user-roles', array() );
+		$user_role_in = get_option( 'hubwoo_customers_role_settings', array() );
 
 		if ( ! empty( $hubwoo_unique_users ) && count( $hubwoo_unique_users ) ) {
 
@@ -376,23 +362,26 @@ class HubwooDataSync {
 
 				$hubwoo_customer = new HubWooCustomer( $id );
 
-				$email = $hubwoo_customer->get_email();
+				$email     = $hubwoo_customer->get_email();
+				$user_data = get_user_by( 'email', $email );
+				$role      = $user_data->roles[0];
 
-				if ( empty( $email ) ) {
-					delete_user_meta( $id, 'hubwoo_pro_user_data_change' );
-					continue;
+				if ( in_array( $role, $role__in ) || in_array( $role, $user_role_in ) ) {
+
+					if ( empty( $email ) ) {
+						delete_user_meta( $id, 'hubwoo_pro_user_data_change' );
+						continue;
+					}
+					$properties      = $hubwoo_customer->get_contact_properties();
+                    //self::create_custom_log('$properties: '.print_r($properties, true));
+					$user_properties = $hubwoo_customer->get_user_data_properties( $properties );
+					$properties_data = array(
+						'email'      => $email,
+						'properties' => $user_properties,
+					);
+
+					$contacts[] = $properties_data;
 				}
-				$properties      = $hubwoo_customer->get_contact_properties();
-                //self::create_custom_log('$properties: '.print_r($properties, true));
-				$user_properties = $hubwoo_customer->get_user_data_properties( $properties );
-				$properties_data = array(
-					'email'      => $email,
-					'properties' => $user_properties,
-				);
-
-				$contacts[] = $properties_data;
-
-				delete_user_meta( $id, 'hubwoo_pro_user_data_change' );
 			}
 		}
 		return $contacts;

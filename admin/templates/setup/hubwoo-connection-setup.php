@@ -18,6 +18,12 @@ if ( 'yes' == get_option( 'hubwoo_connection_complete', 'no' ) ) {
 	$connect['will_connect']  = 'block';
 	$connect['did_connected'] = 'none';
 }
+
+if ( 'yes' == get_option( 'hubwoo_connection_issue', 'no' ) ) {
+	$notice = esc_html( 'Failed to connect to HubSpot, Try to reconnect or please contact us!', 'makewebbetter-hubspot-for-woocommerce' );
+	global $hubwoo;
+	$hubwoo->hubwoo_notice( $notice, 'hubwoo-notice' );
+}
 ?>
 
 <div class="mwb-heb-welcome" style="display: <?php echo esc_attr( $connect['will_connect'] ); ?>";>
@@ -51,8 +57,8 @@ if ( 'yes' == get_option( 'hubwoo_connection_complete', 'no' ) ) {
 			</p>
 
 			<div class="mwb-heb-wlcm__btn-wrap">
-				<a href="<?php echo esc_url( $hubspot_url ); ?>" class="hubwoo-btn--primary"><?php esc_html_e( 'Connect your Account', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
-				<a href="https://app.hubspot.com/signup-v2/crm/step/user-info?utm_medium=integration&utm_source=makewebbetter&utm_campaign=wordpress-woocommerce-integration" target="_blank" class="hubwoo-btn--primary hubwoo-btn--secondary"><?php esc_html_e( 'Create a free HubSpot Account', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
+				<a id="hubwoo-initiate-oauth" href="<?php echo esc_url( $hubspot_url ); ?>" class="hubwoo-btn--primary"><?php esc_html_e( 'Connect your Account', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
+				<a href="https://hubspot.sjv.io/WD70n3" target="_blank" class="hubwoo-btn--primary hubwoo-btn--secondary"><?php esc_html_e( 'Create a free HubSpot Account', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
 			</div>
 		</div>
 	</div>
@@ -82,7 +88,7 @@ if ( 'yes' == get_option( 'hubwoo_connection_complete', 'no' ) ) {
 					<?php
 						esc_html_e( 'Switch to Another Account -', 'makewebbetter-hubspot-for-woocommerce' );
 					?>
-					<span class="changeAccount"><a href="javascript:;" id="hubwoo-change-account" style="text-decoration: none; margin-left: 5px;" href="#"><?php esc_html_e( 'Click Here', 'makewebbetter-hubspot-for-woocommerce' ); ?></a></span>
+					<span class="changeAccount"><a class="hubwoo-manage-account" href="javascript:;" data-type="change-account" style="text-decoration: none; margin-left: 5px;"><?php esc_html_e( 'Click Here', 'makewebbetter-hubspot-for-woocommerce' ); ?></a></span>
 				</p>
 			</div>
 			<div class="mwb-heb-wlcm__btn-wrap">
@@ -100,5 +106,4 @@ if ( 'no' == get_option( 'hubwoo_clear_previous_options', 'no' ) ) {
 	global $hubwoo;
 	$hubwoo->hubwoo_switch_account( false );
 }
-
 ?>

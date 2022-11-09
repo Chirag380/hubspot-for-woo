@@ -18,7 +18,6 @@
  *
  * @package    makewebbetter-hubspot-for-woocommerce
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
  */
 class HubWooConnectionMananager {
 
@@ -93,7 +92,7 @@ class HubWooConnectionMananager {
 	 */
 	public function hubwoo_fetch_access_token_from_code( $hapikey, $hseckey ) {
 
-		if ( isset( $_GET['code'] ) ) {
+		if ( isset( $_GET['type'] ) && 'hs-auth' == $_GET['type'] && isset( $_GET['code'] ) ) {
 			$code     = sanitize_key( $_GET['code'] );
 			$endpoint = '/oauth/v1/token';
 			$data     = array(
@@ -101,7 +100,7 @@ class HubWooConnectionMananager {
 				'client_id'     => $hapikey,
 				'client_secret' => $hseckey,
 				'code'          => $code,
-				'redirect_uri'  => admin_url() . 'admin.php',
+				'redirect_uri'  => admin_url() . 'admin.php?type=hs-auth',
 			);
 			$body     = http_build_query( $data );
 			return $this->hubwoo_oauth_post_api( $endpoint, $body, 'access' );
@@ -172,21 +171,22 @@ class HubWooConnectionMananager {
 				update_option( 'hubwoo_pro_send_suggestions', true );
 				update_option( 'hubwoo_pro_oauth_success', true );
 				return true;
-			} elseif ( 400 === $status_code ) {
-				$message = ! empty( $api_body['message'] ) ? $api_body['message'] : '';
-			} elseif ( 403 === $status_code ) {
-				$message = esc_html__( 'You are forbidden to use this scope', 'makewebbetter-hubspot-for-woocommerce' );
-			} else {
-				$message = esc_html__( 'Something went wrong.', 'makewebbetter-hubspot-for-woocommerce' );
 			}
-			update_option( 'hubwoo_pro_send_suggestions', false );
-			update_option( 'hubwoo_pro_api_validation_error_message', $message );
-			update_option( 'hubwoo_pro_valid_client_ids_stored', false );
-			$this->create_log( $message, $endpoint, $parsed_response );
+		} elseif ( 400 === $status_code ) {
+			$message = ! empty( $api_body['message'] ) ? $api_body['message'] : '';
+		} elseif ( 403 === $status_code ) {
+			$message = esc_html__( 'You are forbidden to use this scope', 'makewebbetter-hubspot-for-woocommerce' );
+		} else {
+			$message = esc_html__( 'Something went wrong.', 'makewebbetter-hubspot-for-woocommerce' );
 		}
 
+		update_option( 'hubwoo_pro_send_suggestions', false );
+		update_option( 'hubwoo_pro_api_validation_error_message', $message );
+		update_option( 'hubwoo_pro_valid_client_ids_stored', false );
+		$this->create_log( $message, $endpoint, $parsed_response, 'access_token' );
 		return false;
 	}
+
 
 	/**
 	 * Fetch access token info for automation enabling.
@@ -223,7 +223,7 @@ class HubWooConnectionMananager {
 			'status_code' => $status_code,
 			'response'    => $res_message,
 		);
-		$this->create_log( $message, $endpoint, $parsed_response );
+		$this->create_log( $message, $endpoint, $parsed_response, 'access_token' );
 	}
 
 	/**
@@ -293,7 +293,7 @@ class HubWooConnectionMananager {
 	 */
 	public function hubwoo_get_owners_info() {
 
-		$url     = '/integrations/v1/me';
+		$url     = '/account-info/v3/details';
 		$headers = $this->get_token_headers();
 
 		$response = wp_remote_get( $this->base_url . $url, array( 'headers' => $headers ) );
@@ -330,15 +330,16 @@ class HubWooConnectionMananager {
 	 *
 	 * @since 1.0.0
 	 * @param array $group_details formatted data to create new group.
+	 * @param array $object_type type of object.
 	 * @return array $parsed_response formatted array with status code/response.
 	 */
-	public function create_group( $group_details ) {
+	public function create_group( $group_details, $object_type ) {
 
 		if ( is_array( $group_details ) ) {
 
-			if ( isset( $group_details['name'] ) && isset( $group_details['displayName'] ) ) {
+			if ( isset( $group_details['name'] ) && isset( $group_details['label'] ) ) {
 
-				$url     = '/properties/v1/contacts/groups';
+				$url     = '/crm/v3/properties/' . $object_type . '/groups';
 				$headers = $this->get_token_headers();
 
 				$group_details = wp_json_encode( $group_details );
@@ -349,7 +350,7 @@ class HubWooConnectionMananager {
 						'headers' => $headers,
 					)
 				);
-				$message       = esc_html__( 'Creating Groups', 'makewebbetter-hubspot-for-woocommerce' );
+				$message       = esc_html__( 'Creating ' . $object_type . ' Groups', 'makewebbetter-hubspot-for-woocommerce' );
 				if ( is_wp_error( $response ) ) {
 					$status_code = $response->get_error_code();
 					$res_message = $response->get_error_message();
@@ -361,10 +362,46 @@ class HubWooConnectionMananager {
 					'status_code' => $status_code,
 					'response'    => $res_message,
 				);
-				$this->create_log( $message, $url, $parsed_response );
+				$this->create_log( $message, $url, $parsed_response, 'groups' );
 				return $parsed_response;
 			}
 		}
+	}
+
+	/**
+	 * Read a property from HubSpot.
+	 *
+	 * @since 1.0.0
+	 * @param array $object_type Object name.
+	 * @param array $property_name Property name.
+	 * @return array $parsed_response Parsed Response.
+	 */
+	public function hubwoo_read_object_property( $object_type, $property_name ) {
+
+		$url      = '/crm/v3/properties/' . $object_type . '/' . $property_name;
+		$headers  = $this->get_token_headers();
+		$res_body = '';
+		$response = wp_remote_get( $this->base_url . $url, array( 'headers' => $headers ) );
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
+		}
+
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+			'body'        => $res_body,
+		);
+
+		$message = __( 'Reading object property', 'makewebbetter-hubspot-for-woocommerce' );
+
+		$this->create_log( $message, $url, $parsed_response, 'properties' );
+
+		return $parsed_response;
 	}
 
 	/**
@@ -372,16 +409,18 @@ class HubWooConnectionMananager {
 	 *
 	 * @since 1.0.0
 	 * @param array $prop_details formatted data to create new property.
+	 * @param array $object_type HubSpot Object type.
 	 * @return array $parsed_response formatted array with status/message.
 	 */
-	public function create_property( $prop_details ) {
+	public function create_property( $prop_details, $object_type ) {
 
 		if ( is_array( $prop_details ) ) {
 
 			if ( isset( $prop_details['name'] ) && isset( $prop_details['groupName'] ) ) {
 
-				$url          = '/properties/v1/contacts/properties';
+				$url          = '/crm/v3/properties/' . $object_type;
 				$headers      = $this->get_token_headers();
+				$res_body     = '';
 				$prop_details = wp_json_encode( $prop_details );
 				$response     = wp_remote_post(
 					$this->base_url . $url,
@@ -405,7 +444,7 @@ class HubWooConnectionMananager {
 					'response'    => $res_message,
 					'body'        => $res_body,
 				);
-				$this->create_log( $message, $url, $parsed_response );
+				$this->create_log( $message, $url, $parsed_response, 'properties' );
 				return $parsed_response;
 			}
 		}
@@ -428,6 +467,7 @@ class HubWooConnectionMananager {
 
 			$url          = '/crm/v3/properties/' . $object_type . '/batch/create';
 			$headers      = $this->get_token_headers();
+			$res_body     = '';
 			$request_body = wp_json_encode( $request_body );
 			$response     = wp_remote_post(
 				$this->base_url . $url,
@@ -436,7 +476,7 @@ class HubWooConnectionMananager {
 					'headers' => $headers,
 				)
 			);
-			$message      = esc_html__( 'Creating Batch Properties', 'makewebbetter-hubspot-for-woocommerce' );
+			$message      = esc_html__( 'Creating ' . $object_type . ' Batch Properties', 'makewebbetter-hubspot-for-woocommerce' );
 			if ( is_wp_error( $response ) ) {
 				$status_code = $response->get_error_code();
 				$res_message = $response->get_error_message();
@@ -451,7 +491,7 @@ class HubWooConnectionMananager {
 				'response'    => $res_message,
 				'body'        => $res_body,
 			);
-			$this->create_log( $message, $url, $parsed_response );
+			$this->create_log( $message, $url, $parsed_response, 'properties' );
 			return $parsed_response;
 		}
 	}
@@ -461,16 +501,17 @@ class HubWooConnectionMananager {
 	 *
 	 * @since 1.0.0
 	 * @param array $prop_details formatted data to update hubspot property.
+	 * @param array $object_type HubSpot Object type.
 	 * @return array $parsed_response formatted array with status/message.
 	 */
-	public function update_property( $prop_details ) {
+	public function update_property( $prop_details, $object_type ) {
 		// check if in the form of array.
 		if ( is_array( $prop_details ) ) {
 			// check for name and groupName.
 			if ( isset( $prop_details['name'] ) && isset( $prop_details['groupName'] ) ) {
 
 				// let's update.
-				$url = '/properties/v1/contacts/properties/named/' . $prop_details['name'];
+				$url = '/crm/v3/properties/' . $object_type . '/' . $prop_details['name'];
 
 				$headers      = $this->get_token_headers();
 				$prop_details = wp_json_encode( $prop_details );
@@ -498,10 +539,53 @@ class HubWooConnectionMananager {
 					'response'    => $res_message,
 				);
 
-				$this->create_log( $message, $url, $parsed_response );
+				$this->create_log( $message, $url, $parsed_response, 'properties' );
 
 				return $parsed_response;
 			}
+		}
+	}
+
+	/**
+	 * Fetch batch properties on hubspot.
+	 *
+	 * @since 1.4.0
+	 * @param array $prop_data list of property name to be fetch.
+	 * @param array $object_type HubSpot Object type.
+	 * @return array $parsed_response formatted array with status/message.
+	 */
+	public function hubwoo_read_batch_object_properties( $prop_data, $object_type ) {
+		if ( is_array( $prop_data ) ) {
+			$url = '/crm/v3/properties/' . $object_type . '/batch/read';
+
+			$headers      = $this->get_token_headers();
+			$prop_data    = wp_json_encode( $prop_data );
+			$response     = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'headers' => $headers,
+					'body'    => $prop_data,
+				)
+			);
+
+			$message = __( 'Fetch batch properties', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, 'properties' );
+
+			return $parsed_response;
 		}
 	}
 
@@ -519,6 +603,7 @@ class HubWooConnectionMananager {
 			$url      = '/contacts/v1/contact';
 			$headers  = $this->get_token_headers();
 			$contact  = wp_json_encode( $contact );
+			$res_body = '';
 			$response = wp_remote_post(
 				$this->base_url . $url,
 				array(
@@ -533,13 +618,15 @@ class HubWooConnectionMananager {
 			} else {
 				$status_code = wp_remote_retrieve_response_code( $response );
 				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
 			}
 
 			$parsed_response = array(
 				'status_code' => $status_code,
 				'response'    => $res_message,
+				'body'        => $res_body,
 			);
-			$this->create_log( $message, $url, $parsed_response );
+			$this->create_log( $message, $url, $parsed_response, 'contacts' );
 			return $parsed_response;
 		}
 	}
@@ -556,8 +643,9 @@ class HubWooConnectionMananager {
 
 		if ( is_array( $contacts ) ) {
 
-			$url     = '/contacts/v1/contact/batch/';
-			$headers = $this->get_token_headers();
+			$url      = '/contacts/v1/contact/batch/';
+			$headers  = $this->get_token_headers();
+			$res_body = '';
 
 			$contacts = wp_json_encode( $contacts );
 			$response = wp_remote_post(
@@ -584,10 +672,17 @@ class HubWooConnectionMananager {
 				'body'        => $res_body,
 			);
 
-			if ( ! empty( $args ) && 202 == $status_code ) {
-				Hubwoo::hubwoo_marked_sync( $args['ids'], $args['type'] );
-			}
-			if ( 400 === $status_code ) {
+			if ( 202 == $status_code ) {
+				update_option( 'hubwoo_last_sync_date', time() );
+				if ( ! empty( $args ) && get_option( 'hubwoo_background_process_running', false ) ) {
+					$hsocssynced  = get_option( 'hubwoo_ocs_contacts_synced', 0 );
+					$hsocssynced += count( $args['ids'] );
+					update_option( 'hubwoo_ocs_contacts_synced', $hsocssynced );
+				}
+				if ( isset( $args['ids'] ) && isset( $args['type'] ) ) {
+					Hubwoo::hubwoo_marked_sync( $args['ids'], $args['type'] );
+				}
+			} elseif ( 400 === $status_code ) {
 
 				$api_body = wp_remote_retrieve_body( $response );
 
@@ -601,15 +696,85 @@ class HubWooConnectionMananager {
 						//phpcs:enable
 						if ( ! in_array( $single_email, $savedinvalidemails, true ) ) {
 							$savedinvalidemails[] = $single_email;
+							$user_exists = email_exists( $single_email );
+							if ( $user_exists ) {
+
+								update_user_meta( $user_exists, 'hubwoo_invalid_contact', 'yes' );
+							} else {
+								$customer_orders = get_posts(
+									array(
+										'numberposts' => -1,
+										'meta_key'    => '_billing_email',
+										'meta_value'  => $single_email,
+										'post_type'   => wc_get_order_types(),
+										'post_status' => array_keys( wc_get_order_statuses() ),
+									)
+								);
+
+								if ( count( $customer_orders ) ) {
+									foreach ( $customer_orders as $key => $value ) {
+										update_post_meta( $value->ID, 'hubwoo_invalid_contact', 'yes' );
+									}
+								}
+							}
 						}
 					}
 				}
+
+				update_option( 'hubwoo_newsletter_property_update', '' );
+				update_option( 'hubwoo_abandoned_property_update', '' );
 			}
 
 			if ( ! empty( $savedinvalidemails ) ) {
 				update_option( 'hubwoo_pro_invalid_emails', $savedinvalidemails );
 			}
-			$this->create_log( $message, $url, $parsed_response );
+			$this->create_log( $message, $url, $parsed_response, 'contacts' );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Create or update contacts.
+	 *
+	 * @param  array  $contacts hubspot acceptable contact properties array.
+	 * @param  string $email email of contact.
+	 * @since 1.2.6
+	 * @return array $parsed_response formatted array with status/message
+	 */
+	public function create_or_update_single_contact( $contacts, $email ) {
+
+		if ( is_array( $contacts ) ) {
+
+			$url      = '/contacts/v1/contact/createOrUpdate/email/' . $email . '/';
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$contacts = wp_json_encode( $contacts );
+			$response = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'body'    => $contacts,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Updating or Creating single users data', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, 'contacts' );
 			return $parsed_response;
 		}
 	}
@@ -627,6 +792,7 @@ class HubWooConnectionMananager {
 			if ( isset( $list_details['name'] ) ) {
 				$url          = '/contacts/v1/lists';
 				$headers      = $this->get_token_headers();
+				$res_body     = '';
 				$list_details = wp_json_encode( $list_details );
 				$response     = wp_remote_post(
 					$this->base_url . $url,
@@ -650,7 +816,7 @@ class HubWooConnectionMananager {
 					'response'    => $res_message,
 					'body'        => $res_body,
 				);
-				$this->create_log( $message, $url, $parsed_response );
+				$this->create_log( $message, $url, $parsed_response, 'lists' );
 				return $parsed_response;
 			}
 		}
@@ -685,7 +851,7 @@ class HubWooConnectionMananager {
 
 		$message = __( 'Get Static Lists', 'makewebbetter-hubspot-for-woocommerce' );
 
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'lists' );
 
 		if ( 200 == $status_code ) {
 			$api_body = wp_remote_retrieve_body( $response );
@@ -736,7 +902,7 @@ class HubWooConnectionMananager {
 
 		$message = __( 'Get Dynamic Lists', 'makewebbetter-hubspot-for-woocommerce' );
 
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'lists' );
 
 		if ( 200 == $status_code ) {
 			$api_body = wp_remote_retrieve_body( $response );
@@ -796,7 +962,7 @@ class HubWooConnectionMananager {
 				'status_code' => $status_code,
 				'response'    => $res_message,
 			);
-			$this->create_log( $message, $url, $parsed_response );
+			$this->create_log( $message, $url, $parsed_response, 'lists' );
 			return $parsed_response;
 		}
 	}
@@ -816,6 +982,7 @@ class HubWooConnectionMananager {
 
 				$url      = '/automation/v3/workflows';
 				$headers  = $this->get_token_headers();
+				$res_body = '';
 				$workflow = wp_json_encode( $workflow_details );
 				$response = wp_remote_post(
 					$this->base_url . $url,
@@ -838,7 +1005,7 @@ class HubWooConnectionMananager {
 					'response'    => $res_message,
 					'body'        => $res_body,
 				);
-				$this->create_log( $message, $url, $parsed_response );
+				$this->create_log( $message, $url, $parsed_response, 'workflows' );
 				return $parsed_response;
 			}
 		}
@@ -876,15 +1043,78 @@ class HubWooConnectionMananager {
 		);
 
 		$message = __( 'Getting all Workflows', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'workflows' );
 
 		if ( 200 == $status_code ) {
 			$api_body = wp_remote_retrieve_body( $response );
 			if ( $api_body ) {
 				$api_body = json_decode( $api_body, true );
 			}
+			update_option( 'hubwoo_access_workflow', 'yes' );
 		} else {
 			$workflows = array();
+			update_option( 'hubwoo_access_workflow', 'no' );
+		}
+
+		if ( ! empty( $response->workflows ) ) {
+
+			foreach ( $response->workflows as $single_workflow ) {
+
+				if ( isset( $single_workflow->name ) && isset( $single_workflow->id ) ) {
+
+					$workflows[ $single_workflow->id ] = $single_workflow->name;
+				}
+			}
+		}
+
+		return $workflows;
+	}
+
+	/**
+	 * Get all workflows from hubspot.
+	 *
+	 * @since 1.4.0
+	 * @param array $workflow_id workflow id to fetch.
+	 * @return array $workflows formatted array with status/response.
+	 */
+	public function get_workflow( $workflow_id ) {
+
+		$workflows           = array();
+		$workflows['select'] = esc_html__( '--Please Select a Workflow--', 'makewebbetter-hubspot-for-woocommerce' );
+		$url                 = '/automation/v3/workflows/' . $workflow_id;
+		$headers             = $this->get_token_headers();
+		$response            = wp_remote_get(
+			$this->base_url . $url,
+			array(
+				'headers' => $headers,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+		}
+
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+		);
+
+		$message = __( 'Get single Workflows', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'workflows' );
+
+		if ( 200 == $status_code ) {
+			$api_body = wp_remote_retrieve_body( $response );
+			if ( $api_body ) {
+				$api_body = json_decode( $api_body, true );
+			}
+			update_option( 'hubwoo_access_workflow', 'yes' );
+		} else {
+			$workflows = array();
+			update_option( 'hubwoo_access_workflow', 'no' );
 		}
 
 		if ( ! empty( $response->workflows ) ) {
@@ -916,7 +1146,7 @@ class HubWooConnectionMananager {
 			$headers  = $this->get_token_headers();
 			$response = $this->_post( $url, array(), $headers );
 			$message  = __( 'Enrolling in Workflow', 'makewebbetter-hubspot-for-woocommerce' );
-			$this->create_log( $message, $url, $response );
+			$this->create_log( $message, $url, $response, 'workflows' );
 		}
 	}
 
@@ -928,91 +1158,83 @@ class HubWooConnectionMananager {
 	 * @param  array  $response    hubspot response array.
 	 * @since 1.0.0
 	 */
-	public function create_log( $message, $url, $response ) {
+	public function create_log( $message, $url, $response, $object_type = '' ) {
 
-		if ( 400 == $response['status_code'] || 401 == $response['status_code'] ) {
+		if ( isset( $response['status_code'] ) ) {
 
-			update_option( 'hubwoo_pro_alert_param_set', true );
-			$error_apis = get_option( 'hubwoo-error-api-calls', 0 );
-			$error_apis ++;
-			update_option( 'hubwoo-error-api-calls', $error_apis );
-		} elseif ( 200 == $response['status_code'] || 202 == $response['status_code'] || 201 == $response['status_code'] || 204 == $response['status_code'] ) {
+			if ( 400 == $response['status_code'] || 401 == $response['status_code'] ) {
 
-			$success_apis = get_option( 'hubwoo-success-api-calls', 0 );
-			$success_apis ++;
-			update_option( 'hubwoo-success-api-calls', $success_apis );
-			update_option( 'hubwoo_pro_alert_param_set', false );
-		} else {
+				update_option( 'hubwoo_pro_alert_param_set', true );
+				$error_apis = get_option( 'hubwoo-error-api-calls', 0 );
+				$error_apis ++;
+				update_option( 'hubwoo-error-api-calls', $error_apis );
+			} elseif ( 200 == $response['status_code'] || 202 == $response['status_code'] || 201 == $response['status_code'] || 204 == $response['status_code'] ) {
 
-			update_option( 'hubwoo_pro_alert_param_set', false );
-		}
+				$success_apis = get_option( 'hubwoo-success-api-calls', 0 );
+				$success_apis ++;
+				update_option( 'hubwoo-success-api-calls', $success_apis );
+				update_option( 'hubwoo_pro_alert_param_set', false );
+			} else {
 
-		if ( 200 == $response['status_code'] ) {
-
-			$final_response['status_code'] = 200;
-		} elseif ( 202 == $response['status_code'] ) {
-
-			$final_response['status_code'] = 202;
-		} else {
-
-			$final_response = $response;
-		}
-
-		$log_enable = get_option( 'hubwoo_pro_log_enable', 'yes' );
-
-		if ( 'yes' == $log_enable ) {
-
-			if ( isset( $_SERVER['REMOTE_ADDR'] ) ) {
-				$server = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+				update_option( 'hubwoo_pro_alert_param_set', false );
 			}
 
-			$log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+			if ( 200 == $response['status_code'] ) {
 
-			if ( ! is_dir( $log_dir ) ) {
+				$final_response['status_code'] = 200;
+			} elseif ( 202 == $response['status_code'] ) {
 
-				@fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
+				$final_response['status_code'] = 202;
+			} else {
+
+				$final_response = $response;
 			}
 
-			$log = 'Website: ' . $server . PHP_EOL .
-					'Time: ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
-					'Process: ' . $message . PHP_EOL .
-					'URL: ' . $url . PHP_EOL .
-					'Response: ' . json_encode( $final_response ) . PHP_EOL .
-					'-----------------------------------' . PHP_EOL;
+			$final_response['body'] = isset( $final_response['body'] ) ? json_decode( $final_response['body'] ) : '';
 
-			file_put_contents( $log_dir, $log, FILE_APPEND );
+			// Create log table in database.
+			Hubwoo::hubwoo_create_log_table( Hubwoo::get_current_crm_name( 'slug' ) );
+			// Insert log in table
+			self::log_request_in_db( $message, $object_type, $url, $final_response );
 		}
 	}
 
-    /**
-     * Create custom log.
-     *
-     * @param  string $message     hubspot log message.
-     */
-    public function create_custom_log( $message ) {
-        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
+	/**
+	 * Log request and response in database.
+	 *
+	 * @param  string $event       Event of which data is synced.
+	 * @param  string $crm_object  Update or create crm object.
+	 * @param  array  $request     Request data.
+	 * @param  array  $response    Api response.
+	 */
+	public function log_request_in_db( $event, $crm_object, $request, $response ) {
 
-        if ( ! is_dir( $log_dir ) ) {
+		global $wpdb;
 
-            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
-        }
+		$log_data = array(
+			'event'      => $event,
+			'request'    => $request,
+			'response'   => serialize( $response ),
+			Hubwoo::get_current_crm_name( 'slug' ) . '_object' => $crm_object,
+			'time'       => time(),
+		);
 
-        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
-            $message . PHP_EOL;
+		$table    = $wpdb->prefix . 'hubwoo_log';
+		$response = $wpdb->insert( $table, $log_data ); //phpcs:ignore
+	}
 
-        file_put_contents( $log_dir, $log, FILE_APPEND );
-    }
-
-    /**
+	/**
 	 * Getting all hubspot properties.
 	 *
 	 * @since 1.0.0
+	 * @param array $object_type HubSpot Object type.
+	 * @return array $response formatted array with status/response.
 	 */
-	public function get_all_hubspot_properties() {
+	public function get_all_hubspot_properties( $object_type ) {
 
 		$response = '';
 
-		$url = '/properties/v1/contacts/properties';
+		$url = '/crm/v3/properties/' . $object_type;
 
 		$headers = $this->get_token_headers();
 
@@ -1023,9 +1245,9 @@ class HubWooConnectionMananager {
 			)
 		);
 
-		$message = esc_html__( 'Fetching all Contact Properties', 'makewebbetter-hubspot-for-woocommerce' );
+		$message = esc_html__( 'Fetching all ' . $object_type . ' Properties', 'makewebbetter-hubspot-for-woocommerce' );
 
-		$this->create_log( $message, $url, $response );
+		$this->create_log( $message, $url, $response, 'properties' );
 
 		if ( isset( $response['status_code'] ) && 200 == $response['status_code'] ) {
 
@@ -1062,7 +1284,7 @@ class HubWooConnectionMananager {
 
 		$message = __( 'Fetching Contact Lists', 'makewebbetter-hubspot-for-woocommerce' );
 
-		$this->create_log( $message, $url, $response );
+		$this->create_log( $message, $url, $response, 'lists' );
 
 		if ( isset( $response['status_code'] ) && 200 == $response['status_code'] ) {
 
@@ -1098,7 +1320,7 @@ class HubWooConnectionMananager {
 		);
 
 		$message = __( 'Fetching Contacts from List', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $response );
+		$this->create_log( $message, $url, $response, 'lists' );
 
 		if ( isset( $response['status_code'] ) && 200 == $response['status_code'] ) {
 
@@ -1109,6 +1331,583 @@ class HubWooConnectionMananager {
 		}
 
 		return $response;
+	}
+
+	/**
+	 * Getting single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $object_type HubSpot Object type.
+	 * @param int   $object_id id of the object.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function get_object_record( $object_type, $object_id ) {
+		$url = '/crm/v3/objects/' . $object_type . '/' . $object_id;
+		$headers = $this->get_token_headers();
+		$response = wp_remote_get(
+			$this->base_url . $url,
+			array(
+				'headers' => $headers,
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body = wp_remote_retrieve_body( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response' => $res_message,
+			'body' => $res_body,
+		);
+		$message = esc_html__( 'Fetching ' . $object_type . ' object', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, $object_type );
+
+		return $parsed_response;
+	}
+
+	/**
+	 * Create single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $object_type HubSpot Object type.
+	 * @param array $properties_data array of object properties.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function create_object_record( $object_type, $properties_data ) {
+		if ( is_array( $properties_data ) ) {
+
+			$url      = '/crm/v3/objects/' . $object_type;
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$properties_data = wp_json_encode( $properties_data );
+			$response = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'body'    => $properties_data,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Creating single ' . $object_type . ' data', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, $object_type );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Update single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $object_type HubSpot Object type.
+	 * @param int   $object_id id of object.
+	 * @param array $properties_data array of object properties.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function update_object_record( $object_type, $object_id, $properties_data ) {
+		if ( is_array( $properties_data ) ) {
+
+			$url      = '/crm/v3/objects/' . $object_type . '/' . $object_id;
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$properties_data = wp_json_encode( $properties_data );
+			$response = wp_remote_request(
+				$this->base_url . $url,
+				array(
+					'method'  => 'PATCH',
+					'body'    => $properties_data,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Updated single ' . $object_type . ' data', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, $object_type );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Search single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $object_type HubSpot Object type.
+	 * @param array $filter_data array of object filter.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function search_object_record( $object_type, $filter_data ) {
+		if ( is_array( $filter_data ) ) {
+			$url      = '/crm/v3/objects/' . $object_type . '/search';
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$filter_data = wp_json_encode( $filter_data );
+			$response = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'body'    => $filter_data,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Search single ' . $object_type . ' data', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, $object_type );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Fetch bulk object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $object_type HubSpot Object type.
+	 * @param array $object_data array of object data.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function get_batch_object_record( $object_type, $object_data ) {
+		if ( is_array( $object_data ) ) {
+			$url = '/crm/v3/objects/' . $object_type . '/batch/read';
+			$headers = $this->get_token_headers();
+			$res_body = '';
+			$object_data = wp_json_encode( $object_data );
+
+			$response = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'body'    => $object_data,
+					'headers' => $headers,
+				)
+			);
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body = wp_remote_retrieve_body( $response );
+			}
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response' => $res_message,
+				'body' => $res_body,
+			);
+			$message = esc_html__( 'Fetching Batch ' . $object_type, 'makewebbetter-hubspot-for-woocommerce' );
+			$this->create_log( $message, $url, $parsed_response, $object_type );
+
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Create bulk object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $object_type HubSpot Object type.
+	 * @param array $object_data array of object data.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function create_batch_object_record( $object_type, $object_data ) {
+		if ( is_array( $object_data ) ) {
+
+			$url      = '/crm/v3/objects/' . $object_type . '/batch/create';
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$object_data = wp_json_encode( $object_data );
+			$response = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'body'    => $object_data,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Creating bulk ' . $object_type . ' data', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, $object_type );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Update bulk object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $object_type HubSpot Object type.
+	 * @param array $object_data array of object data.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function update_batch_object_record( $object_type, $object_data ) {
+		if ( is_array( $object_data ) ) {
+
+			$url      = '/crm/v3/objects/' . $object_type . '/batch/update';
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$object_data = wp_json_encode( $object_data );
+			$response = wp_remote_request(
+				$this->base_url . $url,
+				array(
+					'method'  => 'POST',
+					'body'    => $object_data,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Updated bulk ' . $object_type . ' data', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, $object_type );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Associate single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $from_object associate from object type.
+	 * @param array $from_object_id associate from object id.
+	 * @param array $to_object associate to object type.
+	 * @param array $to_object_id associate to object id.
+	 * @param array $association_id id of association type.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function associate_object( $from_object, $from_object_id, $to_object, $to_object_id, $association_id ) {
+
+		if ( isset( $from_object ) && isset( $to_object ) ) {
+
+			$url      = '/crm/v4/objects/' . $from_object . '/' . $from_object_id . '/associations/' . $to_object . '/' . $to_object_id;
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$associate_body[] = array(
+				'associationCategory' => 'HUBSPOT_DEFINED',
+				'associationTypeId' => $association_id,
+			);
+			$associate_body = wp_json_encode( $associate_body );
+
+			$response = wp_remote_request(
+				$this->base_url . $url,
+				array(
+					'method'  => 'PUT',
+					'body'    => $associate_body,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Associate ' . $from_object . ' to ' . $to_object, 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, 'association' );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Delete association single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $from_object associate from object type.
+	 * @param array $from_object_id associate from object id.
+	 * @param array $to_object associate to object type.
+	 * @param array $to_object_id associate to object id.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function remove_associated_object( $from_object, $from_object_id, $to_object, $to_object_id ) {
+		if ( isset( $from_object ) && isset( $to_object ) ) {
+
+			$url      = '/crm/v4/objects/' . $from_object . '/' . $from_object_id . '/associations/' . $to_object . '/' . $to_object_id;
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$response = wp_remote_request(
+				$this->base_url . $url,
+				array(
+					'method'  => 'DELETE',
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Delete association ' . $from_object . ' to ' . $to_object, 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, 'association' );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Bulk associate single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $from_object associate from object type.
+	 * @param array $to_object associate to object type.
+	 * @param array $associate_body array of associated data.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function associate_batch_object( $from_object, $to_object, $associate_body ) {
+		$url      = '/crm/v4/associations/' . $from_object . '/' . $to_object . '/batch/create';
+		$headers  = $this->get_token_headers();
+		$res_body = '';
+
+		$associate_body = wp_json_encode( $associate_body );
+
+		$response = wp_remote_request(
+			$this->base_url . $url,
+			array(
+				'method'  => 'POST',
+				'body'    => $associate_body,
+				'headers' => $headers,
+			)
+		);
+		$message  = esc_html__( 'Associate batch ' . $from_object . ' to ' . $to_object, 'makewebbetter-hubspot-for-woocommerce' );
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
+		}
+
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+			'body'        => $res_body,
+		);
+
+		$this->create_log( $message, $url, $parsed_response, 'association' );
+		return $parsed_response;
+	}
+
+	/**
+	 * Bulk delete associate single object record.
+	 *
+	 * @since 1.4.0
+	 * @param array $from_object associate from object type.
+	 * @param array $to_object associate to object type.
+	 * @param array $associate_body array of associated data.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function remove_associate_batch_object( $from_object, $to_object, $associate_body ) {
+		$url      = '/crm/v4/associations/' . $from_object . '/' . $to_object . '/batch/archive';
+		$headers  = $this->get_token_headers();
+		$res_body = '';
+
+		$associate_body = wp_json_encode( $associate_body );
+
+		$response = wp_remote_request(
+			$this->base_url . $url,
+			array(
+				'method'  => 'POST',
+				'body'    => $associate_body,
+				'headers' => $headers,
+			)
+		);
+		$message  = esc_html__( 'Delete batch association ' . $from_object . ' to ' . $to_object, 'makewebbetter-hubspot-for-woocommerce' );
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
+		}
+
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+			'body'        => $res_body,
+		);
+
+		$this->create_log( $message, $url, $parsed_response, 'association' );
+		return $parsed_response;
+	}
+
+	/**
+	 * Fetch marketing emails.
+	 *
+	 * @since 1.4.0
+	 * @param array $limit number of emails to be fetched.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function get_marketing_emails( $limit = 10 ) {
+		$url = '/marketing-emails/v1/emails?limit=' . $limit;
+		$headers = $this->get_token_headers();
+		$res_body = '';
+
+		$response = wp_remote_get(
+			$this->base_url . $url,
+			array(
+				'headers' => $headers,
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body = wp_remote_retrieve_body( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response' => $res_message,
+			'body' => $res_body,
+		);
+		$message = esc_html__( 'Fetching marketing emails', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'marketing_emails' );
+
+		return $parsed_response;
+	}
+
+	/**
+	 * Create marketing emails.
+	 *
+	 * @since 1.4.0
+	 * @param array $email_template email template data.
+	 * @return array $parsed_response formatted array with status/response.
+	 */
+	public function create_marketing_emails( $email_template ) {
+		if ( is_array( $email_template ) ) {
+
+			$url      = '/marketing-emails/v1/emails';
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$email_template = wp_json_encode( $email_template );
+			$response = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'body'    => $email_template,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Creating marketing email.', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, 'marketing_emails' );
+			return $parsed_response;
+		}
 	}
 
 	/**
@@ -1151,7 +1950,7 @@ class HubWooConnectionMananager {
 			'response'    => $res_message,
 		);
 		$message         = __( 'Removing Deal Association With Contact', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'association' );
 		return $response;
 	}
 
@@ -1196,7 +1995,52 @@ class HubWooConnectionMananager {
 			'response'    => $res_message,
 		);
 		$message         = __( 'Creating Deal Association With Contact', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'association' );
+		return $parsed_response;
+	}
+
+	/**
+	 * Create deal and company associations.
+	 *
+	 * @since 1.2.7
+	 * @param string $deal_id id of the deal.
+	 * @param string $company_id id of the company.
+	 * @return array $response formatted aray for response.
+	 */
+	public function create_deal_company_associations( $deal_id, $company_id ) {
+
+		$url     = '/crm-associations/v1/associations';
+		$headers = $this->get_token_headers();
+		$request = array(
+			'fromObjectId' => $company_id,
+			'toObjectId'   => $deal_id,
+			'category'     => 'HUBSPOT_DEFINED',
+			'definitionId' => '6',
+		);
+		$request = json_encode( $request );
+
+		$response = wp_remote_request(
+			$this->base_url . $url,
+			array(
+				'body'    => $request,
+				'headers' => $headers,
+				'method'  => 'PUT',
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+		);
+		$message         = __( 'Creating Deal Association With Company', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'association' );
 		return $parsed_response;
 	}
 
@@ -1211,6 +2055,7 @@ class HubWooConnectionMananager {
 
 		$url          = '/deals/v1/deal/' . $deal_id;
 		$headers      = $this->get_token_headers();
+		$res_body     = '';
 		$deal_details = json_encode( $deal_details );
 
 		$response = wp_remote_request(
@@ -1235,7 +2080,7 @@ class HubWooConnectionMananager {
 			'body'        => $res_body,
 		);
 		$message         = __( 'Updating HubSpot Deals', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'deals' );
 		return $parsed_response;
 	}
 
@@ -1275,7 +2120,7 @@ class HubWooConnectionMananager {
 				'status_code' => $status_code,
 				'response'    => $res_message,
 			);
-			$this->create_log( $message, $url, $parsed_response );
+			$this->create_log( $message, $url, $parsed_response, 'groups' );
 			return $parsed_response;
 		}
 	}
@@ -1318,7 +2163,7 @@ class HubWooConnectionMananager {
 					'status_code' => $status_code,
 					'response'    => $res_message,
 				);
-				$this->create_log( $message, $url, $parsed_response );
+				$this->create_log( $message, $url, $parsed_response, 'properties' );
 				return $parsed_response;
 			}
 		}
@@ -1360,55 +2205,10 @@ class HubWooConnectionMananager {
 				);
 
 				$message = __( 'Updating HubSpot Deal Properties', 'makewebbetter-hubspot-for-woocommerce' );
-				$this->create_log( $message, $url, $parsed_response );
+				$this->create_log( $message, $url, $parsed_response, 'properties' );
 				return $parsed_response;
 			}
 		}
-	}
-
-	/**
-	 * Get customer from HuBSpot bt email.
-	 *
-	 * @since    1.0.0
-	 * @param string $email contact email.
-	 * @param string $fname first name of contact.
-	 * @param string $lname last name of contact.
-	 * @return string $vid hubspot id of contact.
-	 */
-	public function get_customer_by_email( $email, $fname, $lname ) {
-
-		$vid      = '';
-		$url      = '/contacts/v1/contact/email/' . $email . '/profile';
-		$headers  = $this->get_token_headers();
-		$response = wp_remote_get(
-			$this->base_url . $url,
-			array(
-				'headers' => $headers,
-			)
-		);
-		if ( is_wp_error( $response ) ) {
-			$status_code = $response->get_error_code();
-			$res_message = $response->get_error_message();
-		} else {
-			$status_code = wp_remote_retrieve_response_code( $response );
-			$res_message = wp_remote_retrieve_response_message( $response );
-			$res_body    = wp_remote_retrieve_body( $response );
-		}
-		$parsed_response = array(
-			'status_code' => $status_code,
-			'response'    => $res_message,
-			'body'        => $res_body,
-		);
-
-		if ( 200 == $parsed_response['status_code'] ) {
-			$parsed_response['body'] = json_decode( $parsed_response['body'], true );
-			if ( ! empty( $parsed_response['body'] ) && isset( $parsed_response['body']['vid'] ) ) {
-				$vid = $parsed_response['body']['vid'];
-			}
-		}
-		$message = esc_html__( 'Fetching Contact by email', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
-		return $vid;
 	}
 
 	/**
@@ -1441,43 +2241,26 @@ class HubWooConnectionMananager {
 			'response'    => $res_message,
 		);
 		$message         = esc_html__( 'Fetching Contact VID by email', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'contacts' );
 		return $vid;
 	}
 
-
 	/**
-	 * Creating new contact on not found.
+	 * Get customer vid using email.
 	 *
 	 * @since 1.0.0
 	 * @param string $email contact email.
-	 * @param string $fname first name of contact.
-	 * @param string $lname last name of contact.
+	 * @return string $vid hubspot vid of contact.
 	 */
-	public function create_customer_by_email( $email, $fname, $lname ) {
+	public function get_customer_vid_historical( $email ) {
+		$vid      = '';
+		$url      = '/contacts/v1/contact/email/' . $email . '/profile';
+		$headers  = $this->get_token_headers();
+		$res_body = '';
 
-		$url                  = '/contacts/v1/contact';
-		$vid                  = '';
-		$contact_properties   = array();
-		$contact_properties[] = array(
-			'property' => 'email',
-			'value'    => $email,
-		);
-		$contact_properties[] = array(
-			'property' => 'firstname',
-			'value'    => $fname,
-		);
-		$contact_properties[] = array(
-			'property' => 'lastname',
-			'value'    => $lname,
-		);
-		$contact_details      = array( 'properties' => $contact_properties );
-		$contact_details      = wp_json_encode( $contact_details );
-		$headers              = $this->get_token_headers();
-		$response             = wp_remote_post(
+		$response = wp_remote_get(
 			$this->base_url . $url,
 			array(
-				'body'    => $contact_details,
 				'headers' => $headers,
 			)
 		);
@@ -1487,16 +2270,16 @@ class HubWooConnectionMananager {
 		} else {
 			$status_code = wp_remote_retrieve_response_code( $response );
 			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
 		}
-		$parsed_response = array(
-			'status_code' => $status_code,
-			'response'    => $res_message,
-		);
-		$message         = __( 'Creating New Contact', 'makewebbetter-hubspot-for-woocommerce' );
-
-		$this->create_log( $message, $url, $parsed_response );
-
-		return $vid;
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+			$message         = esc_html__( 'Fetching Contact VID by email', 'makewebbetter-hubspot-for-woocommerce' );
+			$this->create_log( $message, $url, $parsed_response, 'contacts' );
+			return $parsed_response;
 	}
 
 	/**
@@ -1510,6 +2293,7 @@ class HubWooConnectionMananager {
 
 		$url          = '/deals/v1/deal/';
 		$headers      = $this->get_token_headers();
+		$res_body     = '';
 		$deal_details = wp_json_encode( $deal_details );
 		$response     = wp_remote_post(
 			$this->base_url . $url,
@@ -1532,7 +2316,7 @@ class HubWooConnectionMananager {
 			'body'        => $res_body,
 		);
 		$message         = esc_html__( 'Creating New deal', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'deals' );
 		return $parsed_response;
 	}
 
@@ -1544,7 +2328,7 @@ class HubWooConnectionMananager {
 	 */
 	public function fetch_all_deal_pipelines() {
 
-		$url     = '/crm-pipelines/v1/pipelines/deals';
+		$url     = '/crm/v3/pipelines/deals';
 		$headers = $this->get_token_headers();
 
 		$response = wp_remote_get(
@@ -1562,7 +2346,52 @@ class HubWooConnectionMananager {
 			$res_message = wp_remote_retrieve_response_message( $response );
 		}
 
-		if ( 200 == $status_code ) {
+		if ( 200 === $status_code ) {
+			$api_body = wp_remote_retrieve_body( $response );
+			if ( $api_body ) {
+				$api_body = json_decode( $api_body, true );
+			}
+		} else {
+			$api_body = array();
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+		);
+		$message         = __( 'Fetch all pipeline', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'pipeline' );
+
+		return $api_body;
+	}
+
+	/**
+	 * Fetching pipeline by it's id.
+	 *
+	 * @since 1.0.0
+	 * @param string $pipeline_id id of pipeline.
+	 * @return array $api_body formatted object with get request
+	 */
+	public function get_deal_pipeline( $pipeline_id ) {
+
+		$url     = '/crm/v3/pipelines/deals/' . $pipeline_id;
+		$headers = $this->get_token_headers();
+
+		$response = wp_remote_get(
+			$this->base_url . $url,
+			array(
+				'headers' => $headers,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+		}
+
+		if ( 200 === $status_code ) {
 			$api_body = wp_remote_retrieve_body( $response );
 			if ( $api_body ) {
 				$api_body = json_decode( $api_body, true );
@@ -1571,7 +2400,96 @@ class HubWooConnectionMananager {
 			$api_body = array();
 		}
 
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+		);
+
+		$message         = __( 'Get deal pipeline info', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'pipeline' );
+
 		return $api_body;
+	}
+
+	/**
+	 * Create new deal pipeline.
+	 *
+	 * @since 1.0.0
+	 * @param array $pipeline_date array of pipeline label and it's stages.
+	 * @return array $api_body formatted object with get request.
+	 */
+	public function create_deal_pipeline( $pipeline_data ) {
+		if ( is_array( $pipeline_data ) ) {
+			$url      = '/crm/v3/pipelines/deals';
+			$headers  = $this->get_token_headers();
+			$res_body = '';
+
+			$pipeline_data = wp_json_encode( $pipeline_data );
+			$response = wp_remote_post(
+				$this->base_url . $url,
+				array(
+					'body'    => $pipeline_data,
+					'headers' => $headers,
+				)
+			);
+			$message  = esc_html__( 'Creating deal pipeline', 'makewebbetter-hubspot-for-woocommerce' );
+
+			if ( is_wp_error( $response ) ) {
+				$status_code = $response->get_error_code();
+				$res_message = $response->get_error_message();
+			} else {
+				$status_code = wp_remote_retrieve_response_code( $response );
+				$res_message = wp_remote_retrieve_response_message( $response );
+				$res_body    = wp_remote_retrieve_body( $response );
+			}
+
+			$parsed_response = array(
+				'status_code' => $status_code,
+				'response'    => $res_message,
+				'body'        => $res_body,
+			);
+
+			$this->create_log( $message, $url, $parsed_response, 'pipeline' );
+			return $parsed_response;
+		}
+	}
+
+	/**
+	 * Updating the deal stages in eCommerce Pipeline
+	 *
+	 * @since 1.0.0
+	 * @param string $pipeline_updates updated pipeline data.
+	 * @param string $pipeline_id id of pipeline.
+	 * @return array $response formatted aray for response.
+	 */
+	public function update_deal_pipeline( $pipeline_updates, $pipeline_id ) {
+
+		$url              = '/crm/v3/pipelines/deals/' . $pipeline_id;
+		$headers          = $this->get_token_headers();
+		$pipeline_updates = json_encode( $pipeline_updates );
+		$response         = wp_remote_request(
+			$this->base_url . $url,
+			array(
+				'body'    => $pipeline_updates,
+				'headers' => $headers,
+				'method'  => 'PUT',
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+		);
+		$message         = __( 'Updating the ecommerce pipeline deal stages', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'pipeline' );
+		return $parsed_response;
 	}
 
 	/**
@@ -1606,6 +2524,7 @@ class HubWooConnectionMananager {
 	public function create_or_update_store( $stores ) {
 
 		$headers  = self::get_token_headers();
+		$res_body = '';
 		$url      = '/extensions/ecomm/v2/stores';
 		$stores   = json_encode( $stores );
 		$response = wp_remote_request(
@@ -1631,7 +2550,7 @@ class HubWooConnectionMananager {
 			'body'        => json_decode( $res_body ),
 		);
 		$message         = __( 'Creating or Updating Store', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, 'store' );
 		return $parsed_response;
 	}
 
@@ -1652,6 +2571,7 @@ class HubWooConnectionMananager {
 		$url                    = '/extensions/ecomm/v2/sync/messages';
 		$headers                = self::get_token_headers();
 		$messages               = json_encode( $messages );
+		$res_body               = '';
 
 		$response = wp_remote_request(
 			$this->base_url . $url,
@@ -1676,7 +2596,7 @@ class HubWooConnectionMananager {
 			'body'        => $res_body,
 		);
 		$message         = 'Updating/Creating Ecomm Bridge - ' . $object_type;
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, $object_type );
 		return $parsed_response;
 	}
 
@@ -1693,6 +2613,7 @@ class HubWooConnectionMananager {
 		$store_id = get_option( 'hubwoo_ecomm_store_id', '' );
 		$url      = '/extensions/ecomm/v2/sync/status/' . $store_id . '/' . $object_type . '/' . $object_id;
 		$headers  = self::get_token_headers();
+		$res_body = '';
 		$response = wp_remote_get(
 			$this->base_url . $url,
 			array(
@@ -1714,26 +2635,228 @@ class HubWooConnectionMananager {
 			'body'        => $res_body,
 		);
 		$message         = 'Checking Sync Status of object id -' . $object_id . ' and type ' . $object_type;
-		$this->create_log( $message, $url, $parsed_response );
+		$this->create_log( $message, $url, $parsed_response, $object_type );
 		return $parsed_response;
 	}
 
 	/**
-	 * Updating the deal stages in eCommerce Pipeline
+	 * Create a form data.
 	 *
-	 * @since 1.0.0
-	 * @param string $pipeline_updates updated pipeline data.
+	 * @since 1.0.4
+	 * @param array $form_data post form data.
 	 * @return array $response formatted aray for response.
 	 */
-	public function update_deal_pipeline( $pipeline_updates ) {
+	public function create_form_data( $form_data ) {
 
-		$url              = '/crm-pipelines/v1/pipelines/deals/' . $pipeline_updates['pipelineId'];
-		$headers          = $this->get_token_headers();
-		$pipeline_updates = json_encode( $pipeline_updates );
-		$response         = wp_remote_request(
+		$url       = '/forms/v2/forms';
+		$headers   = $this->get_token_headers();
+		$form_data = wp_json_encode( $form_data );
+		$res_body  = '';
+
+		$response  = wp_remote_post(
 			$this->base_url . $url,
 			array(
-				'body'    => $pipeline_updates,
+				'body'    => $form_data,
+				'headers' => $headers,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+			'body'        => $res_body,
+		);
+		$message         = __( 'Creating a form data', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'form' );
+		return $parsed_response;
+	}
+
+	/**
+	 * Submit a form data to HubSpot.
+	 *
+	 * @since 1.0.0
+	 * @param array  $form_data form fields.
+	 * @param string $portal_id portal id.
+	 * @param string $form_guid form id.
+	 * @return array $response formatted aray for response.
+	 */
+	public function submit_form_data( $form_data, $portal_id, $form_guid ) {
+
+		$url      = 'https://api.hsforms.com/submissions/v3/integration/submit/' . $portal_id . '/' . $form_guid;
+		$headers  = $this->get_token_headers();
+		$res_body = '';
+
+		$form_data = json_encode( $form_data );
+
+		$response = wp_remote_post(
+			$url,
+			array(
+				'body'    => $form_data,
+				'headers' => $headers,
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+			'body'        => $res_body,
+		);
+		$message         = __( 'Submitting Form data', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'form' );
+		return $parsed_response;
+	}
+
+	/**
+	 * Get Batch contacts from emails.
+	 *
+	 * @since 1.0.0
+	 * @param array $batch_emails batch email string.
+	 * @return array $response formatted aray for response.
+	 */
+	public function hubwoo_get_batch_vids( $batch_emails ) {
+
+		$url      = '/contacts/v1/contact/emails/batch/?' . $batch_emails . 'property=email';
+		$headers  = $this->get_token_headers();
+		$res_body = '';
+
+		$batch_emails = json_encode( $batch_emails );
+
+		$response = wp_remote_get(
+			$this->base_url . $url,
+			array(
+				'headers' => $headers,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+			'body'        => $res_body,
+		);
+		$message         = __( 'Fetching Batch Vids', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'contacts' );
+		return $parsed_response;
+	}
+
+
+	/**
+	 * Get All forms.
+	 *
+	 * @since 1.0.
+	 * @return array $response formatted aray for response.
+	 */
+	public function hubwoo_get_all_forms() {
+
+		$url      = '/forms/v2/forms';
+		$headers  = $this->get_token_headers();
+		$res_body = '';
+
+		$response = wp_remote_get(
+			$this->base_url . $url,
+			array(
+				'headers' => $headers,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response'    => $res_message,
+			'body'        => $res_body,
+		);
+		$message         = __( 'Fetching All Forms', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'form' );
+		return $parsed_response;
+	}
+
+	/**
+	 * Fetchig user by email.
+	 *
+	 * @since 1.0.0
+	 * @param string $email email of user.
+	 */
+	public function get_customer_by_email( $email ) {
+
+		$vid = '';
+		$url = '/contacts/v1/contact/email/' . $email . '/profile';
+		$headers = $this->get_token_headers();
+		$response = wp_remote_get(
+			$this->base_url . $url,
+			array(
+				'headers' => $headers,
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			$status_code = $response->get_error_code();
+			$res_message = $response->get_error_message();
+		} else {
+			$status_code = wp_remote_retrieve_response_code( $response );
+			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body = wp_remote_retrieve_body( $response );
+		}
+		$parsed_response = array(
+			'status_code' => $status_code,
+			'response' => $res_message,
+			'body' => $res_body,
+		);
+
+		if ( 200 == $parsed_response['status_code'] ) {
+			$parsed_response['body'] = json_decode( $parsed_response['body'], true );
+			if ( ! empty( $parsed_response['body'] ) && isset( $parsed_response['body']['vid'] ) ) {
+				$vid = $parsed_response['body']['vid'];
+			}
+		}
+		$message = esc_html__( 'Fetching Contact by email', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'contacts' );
+		return $vid;
+	}
+
+	/**
+	 * Updating products.
+	 *
+	 * @since    1.2.7
+	 * @param string $hubwoo_ecomm_pro_id hubspot product id.
+	 * @param array  $properties product properties.
+	 */
+	public function update_existing_products( $hubwoo_ecomm_pro_id, $properties ) {
+
+		$url          = '/crm-objects/v1/objects/products/' . $hubwoo_ecomm_pro_id;
+		$headers      = $this->get_token_headers();
+		$properties   = json_encode( $properties );
+		$response     = wp_remote_request(
+			$this->base_url . $url,
+			array(
+				'body'    => $properties,
 				'headers' => $headers,
 				'method'  => 'PUT',
 			)
@@ -1745,13 +2868,16 @@ class HubWooConnectionMananager {
 		} else {
 			$status_code = wp_remote_retrieve_response_code( $response );
 			$res_message = wp_remote_retrieve_response_message( $response );
+			$res_body    = wp_remote_retrieve_body( $response );
 		}
 		$parsed_response = array(
 			'status_code' => $status_code,
 			'response'    => $res_message,
+			'body'        => $res_body,
 		);
-		$message         = __( 'Updating the ecommerce pipeline deal stages', 'makewebbetter-hubspot-for-woocommerce' );
-		$this->create_log( $message, $url, $parsed_response );
+		$message         = __( 'Updating HubSpot Products', 'makewebbetter-hubspot-for-woocommerce' );
+		$this->create_log( $message, $url, $parsed_response, 'products' );
 		return $parsed_response;
 	}
+
 }

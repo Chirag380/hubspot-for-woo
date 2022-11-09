@@ -19,7 +19,6 @@
  *
  * @package    makewebbetter-hubspot-for-woocommerce
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
  */
 class HubWooCustomer {
 
@@ -164,7 +163,7 @@ class HubWooCustomer {
 		if ( ! empty( $country ) ) {
 			$properties[] = array(
 				'property' => 'country',
-				'value'    => $country,
+				'value'    => Hubwoo::map_country_by_abbr( $country ),
 			);
 		}
 
@@ -187,36 +186,33 @@ class HubWooCustomer {
 			);
 		}
 
-		if ( ! empty( $properties ) ) {
+		$prop_index = array_search( 'customer_new_order', array_column( $properties, 'property' ) );
 
-			if ( ! Hubwoo_Admin::hubwoo_check_for_cart( $properties ) ) {
+		$customer_new_order_flag = 'no';
 
-				if ( Hubwoo_Admin::hubwoo_check_for_properties( 'order_recency_rating', 5, $properties ) ) {
-
-					if ( Hubwoo_Admin::hubwoo_check_for_properties( 'last_order_status', get_option( 'hubwoo_no_status', 'wc-completed' ), $properties ) ) {
-
-						foreach ( $properties as $key => $single_property ) {
-
-							if ( isset( $single_property['property'] ) && 'customer_new_order' == $single_property['property'] ) {
-
-								$properties[ $key ]['value'] = 'yes';
-								break;
-							}
-						}
-					}
-				} else {
-					$properties = Hubwoo_Admin::hubwoo_unset_property( $properties, 'customer_new_order' );
+		if ( ! Hubwoo_Admin::hubwoo_check_for_cart( $properties ) ) {
+			if ( Hubwoo_Admin::hubwoo_check_for_properties( 'order_recency_rating', 5, $properties ) ) {
+				if ( Hubwoo_Admin::hubwoo_check_for_properties( 'last_order_status', get_option( 'hubwoo_no_status', 'wc-completed' ), $properties ) ) {
+					$customer_new_order_flag = 'yes';
 				}
 			}
 		}
 
-		$properties = apply_filters( 'hubwoo_unset_workflow_properties', $properties );
+		if ( $prop_index ) {
+			$properties[ $prop_index ]['value'] = $customer_new_order_flag;
+		} else {
+			$properties[] = array(
+				'property' => 'customer_new_order',
+				'value'    => $customer_new_order_flag,
+			);
+		}
 
+		$properties = apply_filters( 'hubwoo_unset_workflow_properties', $properties );
 		$properties = apply_filters( 'hubwoo_map_new_properties', $properties, $this->_contact_id );
+
 		if ( Hubwoo_Admin::hubwoo_check_for_cart( $properties ) ) {
 			update_user_meta( $this->_contact_id, 'hubwoo_pro_user_cart_sent', 'yes' );
 		}
-
 		return $properties;
 	}
 

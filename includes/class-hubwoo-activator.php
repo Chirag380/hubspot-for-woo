@@ -19,7 +19,6 @@ if ( ! class_exists( 'Hubwoo_Activator' ) ) {
 	 * @since      1.0.0
 	 * @package    makewebbetter-hubspot-for-woocommerce
 	 * @subpackage makewebbetter-hubspot-for-woocommerce/includes
-	 * @author     makewebbetter <webmaster@makewebbetter.com>
 	 */
 	class Hubwoo_Activator {
 
@@ -37,15 +36,30 @@ if ( ! class_exists( 'Hubwoo_Activator' ) ) {
 
 			fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
 
-			if ( ! wp_next_scheduled( 'hubwoo_cron_schedule' ) ) {
+			if ( ! as_next_scheduled_action( 'hubwoo_cron_schedule' ) ) {
 
-				wp_schedule_event( time(), 'mwb-hubwoo-contacts-5min', 'hubwoo_cron_schedule' );
+			    //chrg
+				as_schedule_recurring_action( time(), 300, 'hubwoo_cron_schedule' );
 			}
 
-			if ( ! wp_next_scheduled( 'hubwoo_deals_sync_check' ) ) {
+			if ( ! as_next_scheduled_action( 'hubwoo_deals_sync_check' ) ) {
 
-				wp_schedule_event( time(), 'mwb-hubwoo-check-deals-5min', 'hubwoo_deals_sync_check' );
+				as_schedule_recurring_action( time(), 300, 'hubwoo_deals_sync_check' );
 			}
+
+			if ( ! as_next_scheduled_action( 'hubwoo_products_sync_check' ) ) {
+
+				as_schedule_recurring_action( time(), 300, 'hubwoo_products_sync_check' );
+			}
+
+			if ( ! as_next_scheduled_action( 'hubwoo_check_logs' ) ) {
+
+				as_schedule_recurring_action( time(), 86400, 'hubwoo_check_logs' );
+			}
+
+			// Create log table in database.
+			Hubwoo::hubwoo_create_log_table( Hubwoo::get_current_crm_name( 'slug' ) );
 		}
+
 	}
 }

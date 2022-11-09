@@ -18,7 +18,6 @@
  *
  * @package    makewebbetter-hubspot-for-woocommerce
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
  */
 
 require_once(plugin_dir_path(__DIR__).'const.php');
@@ -150,36 +149,36 @@ class HubWooContactProperties {
 			// order details.
 			$values[] = array(
 				'name'        => 'order',
-				'displayName' => __( 'Order Information', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'Order Information', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 
 			// products bought details.
 			$values[] = array(
 				'name'        => 'last_products_bought',
-				'displayName' => __( 'Products Bought', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'Products Bought', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 
 			// shopping cart details.
 			$values[] = array(
 				'name'        => 'shopping_cart_fields',
-				'displayName' => __( 'Shopping Cart Information', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'Shopping Cart Information', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 
 			// customer details.
 			$values[] = array(
 				'name'        => 'customer_group',
-				'displayName' => __( 'Customer Group', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'Customer Group', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 
 			// categories bought details.
 			$values[] = array(
 				'name'        => 'categories_bought',
-				'displayName' => __( 'Categories Bought', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'Categories Bought', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 			// RFM details.
 			$values[] = array(
 				'name'        => 'rfm_fields',
-				'displayName' => __( 'RFM Information', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'RFM Information', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 			// skus bought details.
 			$values[] = array(
@@ -189,12 +188,12 @@ class HubWooContactProperties {
 			// roi tracking.
 			$values[] = array(
 				'name'        => 'roi_tracking',
-				'displayName' => __( 'ROI Tracking', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'ROI Tracking', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 			// Abandeond Cart.
 			$values[] = array(
 				'name'        => 'abandoned_cart',
-				'displayName' => __( 'Abandoned Cart Details', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( 'Abandoned Cart Details', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 
 			// filter for new groups.
@@ -313,7 +312,12 @@ class HubWooContactProperties {
 
 			$group_name = '';
 
-			$created_properties = get_option( 'hubwoo-properties-created', array() );
+			$created_properties = array_map(
+				function( $property ) {
+					return str_replace( "'", '', $property );
+				},
+				get_option( 'hubwoo-properties-created', array() )
+			);
 
 			foreach ( $active_groups_properties as $group_name_key => $single_group_property ) {
 
@@ -421,6 +425,14 @@ class HubWooContactProperties {
 					'label'     => __( 'Shopping Cart ID', 'makewebbetter-hubspot-for-woocommerce' ),
 					'type'      => 'number',
 					'fieldType' => 'number',
+					'formField' => false,
+				);
+
+				$group_properties[] = array(
+					'name'      => 'customer_source_store',
+					'label'     => __( 'Customer Source Store', 'makewebbetter-hubspot-for-woocommerce' ),
+					'type'      => 'string',
+					'fieldType' => 'textarea',
 					'formField' => false,
 				);
 			} elseif ( 'shopping_cart_fields' === $group_name ) {
@@ -1393,6 +1405,22 @@ class HubWooContactProperties {
 
 		$lists = array();
 
+		$optin = 'yes';
+		$abandoned_status = 'yes';
+		$property_updated = get_option( 'hubwoo_newsletter_property_update', 'no' );
+		$abandoned_property_updated = get_option( 'hubwoo_abandoned_property_update', 'no' );
+
+		if ( ! empty( $property_updated ) && 'yes' == $property_updated ) {
+			if ( 'yes' == $optin ) {
+				$optin = true;
+			}
+		}
+
+		if ( ! empty( $abandoned_property_updated ) && 'yes' == $abandoned_property_updated ) {
+
+			$abandoned_status = true;
+		}
+
 		$lists[] = array(
 
 			'name'    => __( 'Customers', 'makewebbetter-hubspot-for-woocommerce' ),
@@ -1433,7 +1461,7 @@ class HubWooContactProperties {
 				array(
 					array(
 						'operator' => 'EQ',
-						'value'    => 'yes',
+						'value'    => $abandoned_status,
 						'property' => 'current_abandoned_cart',
 						'type'     => 'enumeration',
 					),
@@ -1681,7 +1709,7 @@ class HubWooContactProperties {
 				array(
 					array(
 						'operator' => 'EQ',
-						'value'    => 'yes',
+						'value'    => $optin,
 						'property' => 'newsletter_subscription',
 						'type'     => 'enumeration',
 					),
@@ -1848,6 +1876,14 @@ class HubWooContactProperties {
 	private function get_all_workflows() {
 
 		$workflows = array();
+
+		$abandoned_status = 'yes';
+		$abandoned_property_updated = get_option( 'hubwoo_abandoned_property_update', 'no' );
+
+		if ( ! empty( $abandoned_property_updated ) && 'yes' == $abandoned_property_updated ) {
+
+			$abandoned_status = true;
+		}
 
 		$workflows[] = array(
 			'type'         => 'DRIP_DELAY',
@@ -2529,7 +2565,7 @@ class HubWooContactProperties {
 							'filterFamily'   => 'PropertyValue',
 							'type'           => 'enumeration',
 							'property'       => 'current_abandoned_cart',
-							'value'          => 'yes',
+							'value'          => $abandoned_status,
 							'operator'       => 'SET_ANY',
 						),
 					),
@@ -2552,7 +2588,7 @@ class HubWooContactProperties {
 						),
 						array(
 							'type' => 'CONTACT_PROPERTY_VALUE',
-							'id'   => 'yes',
+							'id'   => $abandoned_status,
 						),
 					),
 				),
@@ -3258,6 +3294,7 @@ class HubWooContactProperties {
 							$last_order_products[ $key ]['url']   = get_permalink( $item_id );
 							$last_order_products[ $key ]['price'] = $product->get_price();
 							$last_order_products[ $key ]['qty']   = $wc_order_item_product->get_quantity();
+							$last_order_products[ $key ]['disc']  = $wc_order_item_product->get_total();
 							$key++;
 						}
 					}
@@ -3266,12 +3303,13 @@ class HubWooContactProperties {
 
 			if ( count( $last_order_products ) ) {
 
-				$products_html = '<div><hr></div><!--[if mso]><center><table width="100%" style="width:600px;"><![endif]--><table style="font-size: 14px; font-family: Arial, sans-serif; line-height: 20px; text-align: left; table-layout: fixed;" width="100%"><thead><tr><th style="text-align: center;word-wrap: unset;">' . __( 'Image', 'makewebbetter-hubspot-for-woocommerce' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Item', 'makewebbetter-hubspot-for-woocommerce' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Qty', 'makewebbetter-hubspot-for-woocommerce' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Price', 'huwboo' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Total', 'makewebbetter-hubspot-for-woocommerce' ) . '</th></tr></thead><tbody>';
+				$products_html = '<div><hr></div><!--[if mso]><center><table width="100%" style="width:600px;"><![endif]--><table style="font-size: 14px; font-family: Arial, sans-serif; line-height: 20px; text-align: left; table-layout: fixed;" width="100%"><thead><tr><th style="text-align: center;word-wrap: unset;">' . __( 'Image', 'makewebbetter-hubspot-for-woocommerce' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Item', 'makewebbetter-hubspot-for-woocommerce' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Qty', 'makewebbetter-hubspot-for-woocommerce' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Price', 'huwboo' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Discount', 'makewebbetter-hubspot-for-woocommerce' ) . '</th><th style="text-align: center;word-wrap: unset;">' . __( 'Total', 'makewebbetter-hubspot-for-woocommerce' ) . '</th></tr></thead><tbody>';
 
 				foreach ( $last_order_products as $single_product ) {
 
-					$total          = $single_product['price'] * $single_product['qty'];
-					$products_html .= '<tr><td style="max-width: 20%;width: 100%; text-align: center;"><img height="50" width="50" src="' . $single_product['image'] . '"></td><td style="max-width: 50%;width: 100%; text-align: center; font-weight: normal;font-size: 12px;word-wrap: unset;"><a style="display: inline-block;" target="_blank" href="' . $single_product['url'] . '"><strong>' . $single_product['name'] . '</strong></a></td><td style="max-width: 10%;width: 100%;text-align: center;">' . $single_product['qty'] . '</td><td style="max-width: 10%;width: 100%;text-align: center; font-size: 10px;">' . wc_price( $single_product['price'], array( 'currency' => get_post_meta( $last_order_id, '_order_currency', true ) ) ) . '</td><td style="max-width: 10%;width: 100%;text-align: center; font-size: 10px;">' . wc_price( $total, array( 'currency' => get_post_meta( $last_order_id, '_order_currency', true ) ) ) . '</td></tr>';
+					$total = $single_product['disc'];
+					$disc  = ( (int) $single_product['price'] * $single_product['qty'] ) - $total;
+					$products_html .= '<tr><td style="max-width: 20%;width: 100%; text-align: center;"><img height="50" width="50" src="' . $single_product['image'] . '"></td><td style="max-width: 50%;width: 100%; text-align: center; font-weight: normal;font-size: 12px;word-wrap: unset;"><a style="display: inline-block;" target="_blank" href="' . $single_product['url'] . '"><strong>' . $single_product['name'] . '</strong></a></td><td style="max-width: 10%;width: 100%;text-align: center;">' . $single_product['qty'] . '</td><td style="max-width: 10%;width: 100%;text-align: center; font-size: 10px;">' . wc_price( $single_product['price'], array( 'currency' => get_post_meta( $last_order_id, '_order_currency', true ) ) ) . '</td><td style="max-width: 10%;width: 100%;text-align: center; font-size: 10px;">' . wc_price( $disc, array( 'currency' => get_post_meta( $last_order_id, '_order_currency', true ) ) ) . '</td><td style="max-width: 10%;width: 100%;text-align: center; font-size: 10px;">' . wc_price( $total, array( 'currency' => get_post_meta( $last_order_id, '_order_currency', true ) ) ) . '</td></tr>';
 				}
 
 				$products_html .= '</tbody></table><!--[if mso]></table></center><![endif]--><div><hr></div>';

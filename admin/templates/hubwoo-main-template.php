@@ -78,7 +78,7 @@ if ( 1 == get_option( 'hubwoo_connection_setup_established', 0 ) ) {
 				$active_tab = 'hubwoo-overview';
 			}
 
-			$users_to_sync = get_option( 'hubwoo_total_ocs_need_sync', 0 );
+			$users_to_sync = get_option( 'hubwoo_total_ocs_contact_need_sync', 1 );
 
 			$is_last_process_completed = get_option( 'hubwoo_ocs_data_synced', false );
 
@@ -94,7 +94,8 @@ if ( 1 == get_option( 'hubwoo_connection_setup_established', 0 ) ) {
 						<?php
 							$current_user_sync = get_option( 'hubwoo_ocs_contacts_synced', 0 );
 							esc_html_e( 'Your contacts are syncing in the background so you can safely leave this page.', 'makewebbetter-hubspot-for-woocommerce' );
-							$total_synced = round( $current_user_sync * 100 / $users_to_sync );
+							$perc         = round( $current_user_sync * 100 / $users_to_sync );
+							$total_synced = $perc > 100 ? 100 : $perc;
 
 						?>
 					</div>
@@ -106,21 +107,21 @@ if ( 1 == get_option( 'hubwoo_connection_setup_established', 0 ) ) {
 								</div>
 							</div> 
 						</div>						
-					  <a href="javascript:;" data-action="stop-contact" class="manage_contact_sync hubwoo__btn"><?php esc_html_e( 'Stop Sync', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
+						<a href="javascript:;" data-action="stop-contact" class="manage_contact_sync hubwoo__btn"><?php esc_html_e( 'Stop Sync', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
 					</div>					
 				</div>	
 				<?php
 			}
 
 			$tab_content_path = 'admin/templates/' . $active_tab . '.php';
-			$hubwoo->load_template_view( $tab_content_path );
+			$hubwoo->load_template_view( $tab_content_path, $active_tab );
 			?>
 		</div>
 	</div>
 	<?php
 } else {
 
-	$display_keys = array_fill_keys( array( 'connection-setup', 'grp-pr-setup', 'list-setup', 'sync' ), '' );
+	$display_keys = array_fill_keys( array( 'connection-setup', 'grp-pr-setup', 'list-setup', 'pipeline-setup', 'sync' ), '' );
 
 	$display_keys['default_tab']      = 'connection-setup';
 	$display_keys['connection-setup'] = 'active';
@@ -137,9 +138,15 @@ if ( 1 == get_option( 'hubwoo_connection_setup_established', 0 ) ) {
 		}
 
 		if ( 1 == get_option( 'hubwoo_pro_lists_setup_completed', 0 ) ) {
-			$display_keys['list-setup']  = 'completed';
-			$display_keys['sync']        = 'completed';
-			$display_keys['default_tab'] = 'sync';
+			$display_keys['list-setup']     = 'completed';
+			$display_keys['pipeline-setup'] = 'completed';
+			$display_keys['default_tab']    = 'pipeline-setup';
+		}
+
+		if ( 1 == get_option( 'hubwoo_pipeline_setup_completed', 0 ) ) {
+			$display_keys['pipeline-setup']  = 'completed';
+			$display_keys['sync']            = 'completed';
+			$display_keys['default_tab']     = 'sync';
 		}
 	}
 
@@ -177,19 +184,24 @@ if ( 1 == get_option( 'hubwoo_connection_setup_established', 0 ) ) {
 						<?php esc_html_e( 'Lists', 'makewebbetter-hubspot-for-woocommerce' ); ?>
 					</a>
 				</li>
+				<li class="mwb-heb__nav-list-item <?php echo esc_attr( $display_keys['pipeline-setup'] ); ?>">
+					<a href="admin.php?page=hubwoo&hubwoo_tab=hubwoo-overview&hubwoo_key=pipeline-setup">
+						<span class="mwb-heb__nav-count"><?php esc_html_e( '4', 'makewebbetter-hubspot-for-woocommerce' ); ?></span> 
+						<?php esc_html_e( 'Deal Stage', 'makewebbetter-hubspot-for-woocommerce' ); ?>
+					</a>
+				</li>
 				<li class="mwb-heb__nav-list-item <?php echo esc_attr( $display_keys['sync'] ); ?>">
 					<a href="admin.php?page=hubwoo&hubwoo_tab=hubwoo-overview&hubwoo_key=sync">
-						<span class="mwb-heb__nav-count"><?php esc_html_e( '4', 'makewebbetter-hubspot-for-woocommerce' ); ?></span> 
+						<span class="mwb-heb__nav-count"><?php esc_html_e( '5', 'makewebbetter-hubspot-for-woocommerce' ); ?></span> 
 						<?php esc_html_e( 'Sync', 'makewebbetter-hubspot-for-woocommerce' ); ?>
 					</a>
 				</li>
 			</ul>
 		</nav>
-		
 		<?php
 
 			$tab_content_path = 'admin/templates/setup/hubwoo-' . $setup_tab . '.php';
-			$hubwoo->load_template_view( $tab_content_path );
+			$hubwoo->load_template_view( $tab_content_path, $setup_tab );
 		?>
 	</div>
 <?php } ?>

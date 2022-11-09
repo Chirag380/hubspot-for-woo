@@ -17,7 +17,6 @@
  * @since      1.0.0
  * @package    makewebbetter-hubspot-for-woocommerce
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
  */
 
 if ( ! class_exists( 'Hubwoo_Deactivator' ) ) {
@@ -29,7 +28,6 @@ if ( ! class_exists( 'Hubwoo_Deactivator' ) ) {
 	 * @since      1.0.0
 	 * @package    makewebbetter-hubspot-for-woocommerce
 	 * @subpackage makewebbetter-hubspot-for-woocommerce/includes
-	 * @author     makewebbetter <webmaster@makewebbetter.com>
 	 */
 	class Hubwoo_Deactivator {
 
@@ -40,7 +38,14 @@ if ( ! class_exists( 'Hubwoo_Deactivator' ) ) {
 		 */
 		public static function deactivate() {
 
-			wp_clear_scheduled_hook( 'hubwoo_cron_schedule' );
+			as_unschedule_action( 'hubwoo_cron_schedule' );
+			as_unschedule_action( 'hubwoo_deals_sync_check' );
+			as_unschedule_action( 'hubwoo_products_sync_check' );
+			as_unschedule_action( 'hubwoo_deal_update_schedule' );
+			as_unschedule_action( 'hubwoo_products_status_background' );
+			as_unschedule_action( 'hubwoo_products_sync_background' );
+			as_unschedule_action( 'hubwoo_contacts_sync_background' );
+			as_unschedule_action( 'hubwoo_check_logs' );
 		}
 	}
 }

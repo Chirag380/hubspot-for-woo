@@ -5,8 +5,8 @@
  * @link       https://makewebbetter.com/
  * @since      1.0.0
  *
- * @package    hubspot-for-woocommerce
- * @subpackage hubspot-for-woocommerce/includes
+ * @package    makewebbetter-hubspot-for-woocommerce
+ * @subpackage makewebbetter-hubspot-for-woocommerce/includes
  */
 
 /**
@@ -16,9 +16,8 @@
  * about contacts properties and there callback functions to
  * get value of that property.
  *
- * @package    hubspot-for-woocommerce
- * @subpackage hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
+ * @package    makewebbetter-hubspot-for-woocommerce
+ * @subpackage makewebbetter-hubspot-for-woocommerce/includes
  */
 
 require_once(plugin_dir_path(__DIR__).'const.php');
@@ -59,6 +58,8 @@ class HubWooPropertyCallbacks {
 		'customer_group'                           => 'get_contact_group',
 		'newsletter_subscription'                  => 'hubwoo_user_meta',
 		'shopping_cart_customer_id'                => 'hubwoo_user_meta',
+		'customer_source_store'                    => 'hubwoo_user_meta',
+		'hs_language'                              => 'hubwoo_user_meta',
 		'marketing_newsletter'                     => 'hubwoo_user_meta',
 
 		'shipping_address_line_1'                  => 'get_user_meta',
@@ -331,7 +332,7 @@ class HubWooPropertyCallbacks {
 			$account_creation = strtotime( $account_creation );
 		}
 
-		if ( ! empty( $account_creation ) ) {
+		if ( ! empty( $account_creation ) && 0 < $account_creation ) {
 
 			$this->_cache['account_creation_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $account_creation );
 		}
@@ -369,7 +370,15 @@ class HubWooPropertyCallbacks {
 			}
 		}
 
+		$contact_preferred_lang = get_user_meta( $this->_contact_id, 'hubwoo_preferred_language', true );
+
+		if ( isset( $contact_preferred_lang ) && ! empty( $contact_preferred_lang ) ) {
+			$this->_cache['hs_language'] = $contact_preferred_lang;
+		}
+
 		$this->_cache['shopping_cart_customer_id'] = $this->_contact_id;
+
+		$this->_cache['customer_source_store'] = get_bloginfo( 'name' );
 
 		$this->_cache['total_number_of_current_orders'] = 0;
 
@@ -383,6 +392,7 @@ class HubWooPropertyCallbacks {
 
 		$this->_cache['monetary_rating'] = 1;
 
+		$optin       = 'yes';
 		$reg_optin   = get_user_meta( $this->_contact_id, 'hubwoo_registeration_marketing_optin', true );
 		$check_optin = get_user_meta( $this->_contact_id, 'hubwoo_checkout_marketing_optin', true );
 
@@ -394,6 +404,16 @@ class HubWooPropertyCallbacks {
 
 		if ( empty( $optin ) ) {
 			$optin = 'no';
+		}
+
+		$property_updated = get_option( 'hubwoo_newsletter_property_update', 'no' );
+
+		if ( ! empty( $property_updated ) && 'yes' == $property_updated ) {
+			if ( 'yes' == $optin ) {
+				$optin = true;
+			} else {
+				$optin = false;
+			}
 		}
 
 		if ( ! empty( $reg_optin ) && 'yes' == $reg_optin ) {
@@ -839,7 +859,7 @@ class HubWooPropertyCallbacks {
 	 */
 	public function hubwoo_user_subs_data( $key ) {
 
-		if ( ! Hubwoo::hubwoo_subs_active() ) {
+		if ( Hubwoo::hubwoo_subs_active() && 'no' == get_option( 'hubwoo_subs_settings_enable', 'yes' ) ) {
 
 			return;
 		}
@@ -859,7 +879,7 @@ class HubWooPropertyCallbacks {
 				'posts_per_page'      => -1,
 				'post_status'         => 'any',
 				'orderby'             => 'date',
-				'order'               => 'asc',
+				'order'               => 'desc',
 				'fields'              => 'ids',
 				'no_found_rows'       => true,
 				'ignore_sticky_posts' => true,
@@ -982,7 +1002,7 @@ class HubWooPropertyCallbacks {
 					$this->_cache[site_prefix.'last_subscription_trial_end_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_trial_end']->getTimestamp() );
 				}
 
-				if ( ! empty( $order_data['schedule_end'] ) && $order_data['schedule_end'] instanceof WC_DateTime ) {
+				if ( ! empty( $order_data['schedule_next_payment'] ) && $order_data['schedule_next_payment'] instanceof WC_DateTime ) {
 
 					$this->_cache[site_prefix.'last_subscription_next_payment_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_end']->getTimestamp() );
 				}
@@ -1082,4 +1102,3 @@ class HubWooPropertyCallbacks {
 		return floor( $datediff / ( 60 * 60 * 24 ) );
 	}
 }
-

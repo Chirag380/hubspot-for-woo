@@ -1,17 +1,22 @@
+#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: \n"
+"Project-Id-Version: MWB HubSpot for WooCommerce 1.2.5\n"
 "POT-Creation-Date: 2022-10-31 11:05+0530\n"
-"PO-Revision-Date: 2022-10-31 11:05+0530\n"
+"PO-Revision-Date: 2021-10-30 15:41+0530\n"
 "Last-Translator: \n"
-"Language-Team: \n"
+"Language-Team: MakeWebBetter\n"
 "Language: en_US\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 2.3\n"
-"X-Poedit-Basepath: .\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-KeywordsList: __;_e;_n;_x;_ex;_nx;esc_attr__;esc_attr_e;esc_attr_x;"
+"esc_html__;esc_html_e;esc_html_x;_n_noop;_nx_noop;translate_nooped_plural\n"
+"X-Poedit-SearchPath-0: .\n"
 
 #: admin/class-hubwoo-admin.php:108
 #, php-format

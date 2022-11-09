@@ -5,8 +5,8 @@
  * @link       https://makewebbetter.com/
  * @since      1.0.0
  *
- * @package    hubspot-ecomm-bridge-for-woocommerce
- * @subpackage hubspot-ecomm-bridge-for-woocommerce/includes
+ * @package    makewebbetter-hubspot-for-woocommerce
+ * @subpackage makewebbetter-hubspot-for-woocommerce/includes
  */
 
 /**
@@ -18,7 +18,6 @@
  *
  * @package    makewebbetter-hubspot-for-woocommerce
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
  */
 class HubwooEcommPropertyCallbacks {
 
@@ -48,33 +47,36 @@ class HubwooEcommPropertyCallbacks {
 	protected $_property_callbacks = array(
 
 		'email'                    => 'hubwoo_get_user_mail',
-		'first_name'               => 'hubwoo_get_user_meta',
-		'last_name'                => 'hubwoo_get_user_meta',
-		'billing_address_1'        => 'hubwoo_get_user_meta',
-		'billing_company'          => 'hubwoo_get_user_meta',
-		'billing_city'             => 'hubwoo_get_user_meta',
-		'billing_state'            => 'hubwoo_get_user_meta',
-		'billing_postcode'         => 'hubwoo_get_user_meta',
-		'billing_country'          => 'hubwoo_get_user_meta',
-		'billing_phone'            => 'hubwoo_get_user_meta',
-		'billing_mobile'           => 'hubwoo_get_user_meta',
+		'firstname'                => 'hubwoo_get_user_meta',
+		'lastname'                 => 'hubwoo_get_user_meta',
+		'address'                  => 'hubwoo_get_user_meta',
+		'company'                  => 'hubwoo_get_user_meta',
+		'city'                     => 'hubwoo_get_user_meta',
+		'state'                    => 'hubwoo_get_user_meta',
+		'zip'                      => 'hubwoo_get_user_meta',
+		'country'                  => 'hubwoo_get_user_meta',
+		'phone'                    => 'hubwoo_get_user_meta',
+		'mobilephone'              => 'hubwoo_get_user_meta',
 
-		'product_name'             => 'hubwoo_ecomm_product_info',
-		'product_image_url'        => 'hubwoo_ecomm_product_info',
-		'product_price'            => 'hubwoo_ecomm_product_info',
-		'product_description'      => 'hubwoo_ecomm_product_info',
+		'name'                     => 'hubwoo_ecomm_product_info',
+		'hs_images'                => 'hubwoo_ecomm_product_info',
+		'price'                    => 'hubwoo_ecomm_product_info',
+		'pr_description'           => 'hubwoo_ecomm_product_info',
+		'product_source_store'     => 'hubwoo_ecomm_product_info',
+		'store_product_id'         => 'hubwoo_ecomm_product_info',
+		'hs_sku'                   => 'hubwoo_ecomm_product_info',
 
 		'dealstage'                => 'hubwoo_ecomm_deal_info',
 		'dealname'                 => 'hubwoo_ecomm_deal_info',
 		'closedate'                => 'hubwoo_ecomm_deal_info',
-		'order_amount'             => 'hubwoo_ecomm_deal_info',
+		'amount'                   => 'hubwoo_ecomm_deal_info',
 		'order_abandoned_cart_url' => 'hubwoo_ecomm_deal_info',
-		'order_discount_amount'    => 'hubwoo_ecomm_deal_info',
-		'order_id'                 => 'hubwoo_ecomm_deal_info',
-		'order_shipment_ids'       => 'hubwoo_ecomm_deal_info',
-		'order_tax_amount'         => 'hubwoo_ecomm_deal_info',
-		'order_date'               => 'hubwoo_ecomm_deal_info',
-		'customer_note'            => 'hubwoo_ecomm_deal_info',
+		'discount_amount'          => 'hubwoo_ecomm_deal_info',
+		'order_number'             => 'hubwoo_ecomm_deal_info',
+		'shipment_ids'             => 'hubwoo_ecomm_deal_info',
+		'tax_amount'               => 'hubwoo_ecomm_deal_info',
+		'createdate'               => 'hubwoo_ecomm_deal_info',
+		'description'              => 'hubwoo_ecomm_deal_info',
 	);
 
 	/**
@@ -153,10 +155,54 @@ class HubwooEcommPropertyCallbacks {
 	 */
 	public function hubwoo_get_user_meta( $key ) {
 
-		if ( 'billing_mobile' == $key ) {
-			$key = 'billing_phone';
+		$value = '';
+
+		switch ( $key ) {
+
+			case 'firstname':
+				$value = get_user_meta( $this->_object_id, 'first_name', true );
+				break;
+
+			case 'lastname':
+				$value = get_user_meta( $this->_object_id, 'last_name', true );
+				break;
+
+			case 'company':
+				$value = get_user_meta( $this->_object_id, 'billing_company', true );
+				break;
+
+			case 'city':
+				$value = get_user_meta( $this->_object_id, 'billing_city', true );
+				break;
+
+			case 'state':
+				$value = get_user_meta( $this->_object_id, 'billing_state', true );
+				break;
+
+			case 'country':
+				$value = get_user_meta( $this->_object_id, 'billing_country', true );
+				break;
+
+			case 'address':
+				$address1 = get_user_meta( $this->_object_id, 'billing_address_1', true );
+				$address2 = get_user_meta( $this->_object_id, 'billing_address_2', true );
+				$address  = '';
+				if ( ! empty( $address1 ) || ! empty( $address2 ) ) {
+					$address = $address1 . ' ' . $address2;
+				}
+				$value = $address;
+				break;
+
+			case 'zip':
+				$value = get_user_meta( $this->_object_id, 'billing_postcode', true );
+				break;
+
+			case 'mobilephone':
+			case 'phone':
+				$value = get_user_meta( $this->_object_id, 'billing_phone', true );
+				break;
 		}
-		return get_user_meta( $this->_object_id, $key, true );
+		return $value;
 	}
 
 	/**
@@ -235,21 +281,33 @@ class HubwooEcommPropertyCallbacks {
 
 			switch ( $key ) {
 
-				case 'product_name':
+				case 'name':
 					$value = HubwooObjectProperties::hubwoo_ecomm_product_name( $product );
 					break;
 
-				case 'product_image_url':
+				case 'hs_images':
 					$attachment_src = wp_get_attachment_image_src( get_post_thumbnail_id( $this->_object_id ), 'single-post-thumbnail' );
 					$image_url      = isset( $attachment_src[0] ) ? $attachment_src[0] : wc_placeholder_img_src();
 					$value          = $image_url;
 					break;
 
-				case 'product_price':
+				case 'price':
 					$value = $product->get_price();
 					break;
 
-				case 'product_description':
+				case 'pr_description':
+					$value = $product->get_short_description();
+					break;
+
+				case 'store_product_id':
+					$value = $this->_object_id;
+					break;
+
+				case 'product_source_store':
+					$value = get_bloginfo( 'name' );
+					break;
+
+				case 'hs_sku':
 					$value = $product->get_sku();
 					break;
 			}
@@ -271,74 +329,76 @@ class HubwooEcommPropertyCallbacks {
 
 		$value = '';
 
-		$status     = $order->get_status();
-		$deal_name  = '#' . $order->get_order_number();
-		$order_date = get_post_time( 'U', true, $this->_object_id );
+		if ( $order instanceof WC_Order ) {
+			$status     = $order->get_status();
+			$deal_name  = '#' . $order->get_order_number();
+			$order_date = get_post_time( 'U', true, $this->_object_id );
 
-		$create_date = $order_date;
+			$create_date = $order_date;
 
-		$user_info['first_name'] = get_post_meta( $this->_object_id, '_billing_first_name', true );
-		$user_info['last_name']  = get_post_meta( $this->_object_id, '_billing_last_name', true );
+			$user_info['first_name'] = get_post_meta( $this->_object_id, '_billing_first_name', true );
+			$user_info['last_name']  = get_post_meta( $this->_object_id, '_billing_last_name', true );
 
-		foreach ( $user_info as $value ) {
-			if ( ! empty( $value ) ) {
-				$deal_name .= ' ' . $value;
+			foreach ( $user_info as $value ) {
+				if ( ! empty( $value ) ) {
+					$deal_name .= ' ' . $value;
+				}
 			}
-		}
-		$deal_stage = self::huboo_get_valid_deal_stage( 'wc-' . $status );
+			$deal_stage = self::hubwoo_get_valid_deal_stage( 'wc-' . $status );
 
-		if ( ! in_array( $deal_stage, self::hubwoo_ecomm_won_stages() ) ) {
+			if ( ! in_array( $deal_stage, self::hubwoo_ecomm_won_stages() ) ) {
 
-			$order_date = get_post_time( 'U', true, $this->_object_id ) + ( get_option( 'hubwoo_ecomm_closedate_days', 1 ) * 24 * 60 * 60 );
-		}
+				$order_date = get_post_time( 'U', true, $this->_object_id ) + ( get_option( 'hubwoo_ecomm_closedate_days', 1 ) * 24 * 60 * 60 );
+			}
 
-		if ( ! empty( $order ) && ! is_wp_error( $order ) ) {
+			if ( ! empty( $order ) && ! is_wp_error( $order ) ) {
 
-			switch ( $key ) {
+				switch ( $key ) {
 
-				case 'dealstage':
-					$value = $deal_stage;
-					break;
+					case 'dealstage':
+						$value = $deal_stage;
+						break;
 
-				case 'dealname':
-					$value = $deal_name;
-					break;
+					case 'dealname':
+						$value = $deal_name;
+						break;
 
-				case 'closedate':
-					$value = HubwooObjectProperties::get_instance()->hubwoo_set_utc_midnight( $order_date );
-					break;
+					case 'closedate':
+						$value = HubwooObjectProperties::get_instance()->hubwoo_set_utc_midnight( $order_date );
+						break;
 
-				case 'order_date':
-					$value = HubwooObjectProperties::get_instance()->hubwoo_set_utc_midnight( $create_date );
-					break;
+					case 'createdate':
+						$value = HubwooObjectProperties::get_instance()->hubwoo_set_utc_midnight( $create_date );
+						break;
 
-				case 'order_amount':
-					$value = $order->get_total();
-					break;
+					case 'amount':
+						$value = $order->get_total();
+						break;
 
-				case 'order_abandoned_cart_url':
-					$value = $order->get_checkout_payment_url();
-					break;
+					case 'order_abandoned_cart_url':
+						$value = $order->get_checkout_payment_url();
+						break;
 
-				case 'order_discount_amount':
-					$value = $order->get_discount_total();
-					break;
+					case 'discount_amount':
+						$value = $order->get_discount_total();
+						break;
 
-				case 'order_id':
-					$value = $order->get_order_number();
-					break;
+					case 'order_number':
+						$value = $order->get_order_number();
+						break;
 
-				case 'order_shipment_ids':
-					$value = $order->get_shipping_method();
-					break;
+					case 'shipment_ids':
+						$value = $order->get_shipping_method();
+						break;
 
-				case 'order_tax_amount':
-					$value = $order->get_total_tax();
-					break;
+					case 'tax_amount':
+						$value = $order->get_total_tax();
+						break;
 
-				case 'customer_note':
-					$value = $order->get_customer_note();
-					break;
+					case 'description':
+						$value = $order->get_customer_note();
+						break;
+				}
 			}
 		}
 
@@ -370,7 +430,7 @@ class HubwooEcommPropertyCallbacks {
 	 * @param  string $order_key  order status key.
 	 * @return string  hubspot deal stage
 	 */
-	public static function huboo_get_valid_deal_stage( $order_key ) {
+	public static function hubwoo_get_valid_deal_stage( $order_key ) {
 
 		$saved_mappings = get_option( 'hubwoo_ecomm_final_mapping', array() );
 		$key            = array_search( $order_key, array_column( $saved_mappings, 'status' ) );

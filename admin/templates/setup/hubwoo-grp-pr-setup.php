@@ -14,7 +14,12 @@ $hubwoo_groups          = HubWooContactProperties::get_instance()->_get( 'groups
 $final_groups           = $hubwoo->hubwoo_get_final_groups();
 $hubwoo_required_groups = $hubwoo->hubwoo_workflows_and_list_groups();
 $hubwoo_required_props  = $hubwoo->hubwoo_workflows_and_list_properties();
-$final_properties       = get_option( 'hubwoo-properties-created', array() );
+$final_properties       = array_map(
+	function( $property ) {
+		return str_replace( "'", '', $property );
+	},
+	get_option( 'hubwoo-properties-created', array() )
+);
 $field_setup            = $hubwoo->is_field_setup_completed();
 
 if ( 1 == get_option( 'hubwoo_fields_setup_completed', 0 ) ) {
@@ -53,8 +58,8 @@ if ( 1 == get_option( 'hubwoo_fields_setup_completed', 0 ) ) {
 				</ul>				
 			</div>
 			<div class="mwb-heb-wlcm__btn-wrap hubwoo-btn-list">
-				<a href="javascript:void;" id="hubwoo_create_group_prop_setup" class="hubwoo-btn--primary hubwoo-btn-data" data-action="group_setup" style="display: <?php echo esc_attr( $cta['will_create'] ); ?>"><?php esc_html_e( 'Create Properties and Groups ', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
-				<a href="#" id="hubwoo-manage-setup" class="hubwoo-btn--primary hubwoo-btn-data" data-action="group_manage_setup" style="display: <?php echo esc_attr( $cta['did_created'] ); ?>"><?php esc_html_e( 'View Created Properties and Groups ', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
+				<a href="javascript:void;" id="hubwoo_create_group_prop_setup" class="hubwoo-btn--primary hubwoo-btn-data" data-action="group_setup" style="display: <?php echo esc_attr( $cta['will_create'] ); ?>"><?php esc_html_e( 'Create Groups & Properties ', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
+				<a href="javascript:void;" id="hubwoo-manage-setup" class="hubwoo-btn--primary hubwoo-btn-data" data-action="group_manage_setup" style="display: <?php echo esc_attr( $cta['did_created'] ); ?>"><?php esc_html_e( 'View Created Properties and Groups ', 'makewebbetter-hubspot-for-woocommerce' ); ?></a>
 			</div>
 			<div class="hubwoo-sub-content">
 				<div class="hubwoo-group__progress" style="display: none;">
@@ -107,7 +112,7 @@ if ( 1 == get_option( 'hubwoo_fields_setup_completed', 0 ) ) {
 																<span class="hub-woo__checkmark"><?php esc_html_e( 'Required Group for Lists & Workflows', 'makewebbetter-hubspot-for-woocommerce' ); ?></span>
 															<?php } ?>
 														</label>
-														<a class="mwb-woo__accordian-heading <?php echo esc_attr( $single_group['name'] ); ?>" data-name="<?php echo esc_attr( $single_group['name'] ); ?>" href="#"><?php echo esc_html( $single_group['displayName'] ); ?></a>
+														<a class="mwb-woo__accordian-heading <?php echo esc_attr( $single_group['name'] ); ?>" data-name="<?php echo esc_attr( $single_group['name'] ); ?>" href="javascript:void;"><?php echo esc_html( $single_group['label'] ); ?></a>
 														<i id="fa-drag-<?php echo esc_attr( $single_group['name'] ); ?>" class=" fa fa-plus grToCreate"></i>																						
 													</div>
 													<div class="mwb-woo__accordion-content" id="<?php echo esc_attr( $single_group['name'] ); ?>" style="display: none;">
@@ -178,13 +183,13 @@ if ( 1 == get_option( 'hubwoo_fields_setup_completed', 0 ) ) {
 														$anc_class = 'gr_created';
 														?>
 														<i id="<?php echo esc_attr( 'fa-' . $single_group['detail']['name'] ); ?>" class="fa fa-chevron-right hubwoo-font-icon"></i>
-														<a data-name="<?php echo esc_attr( $single_group['detail']['name'], 'makewebbetter-hubspot-for-woocommerce' ); ?>" class="mwb-woo__accordian-heading <?php echo esc_attr( $single_group['detail']['name'] ); ?> <?php echo esc_attr( $anc_class ); ?>" href="#"><?php echo esc_html( $single_group['detail']['displayName'] ); ?></a>
+														<a data-name="<?php echo esc_attr( $single_group['detail']['name'], 'makewebbetter-hubspot-for-woocommerce' ); ?>" class="mwb-woo__accordian-heading <?php echo esc_attr( $single_group['detail']['name'] ); ?> <?php echo esc_attr( $anc_class ); ?>" href="javascript:void;"><?php echo esc_html( $single_group['detail']['label'] ); ?></a>
 														<?php
 													} else {
 														$anc_class = 'gr_uncreated';
 														?>
 													<i id="<?php echo esc_attr( 'fa--' . $single_group['detail']['name'] ); ?>" class="fa fa-chevron-right hubwoo-font-icon"></i>
-															<a class="mwb-woo__accordian-heading <?php echo esc_attr( $single_group['detail']['name'] ); ?> <?php echo esc_attr( $anc_class ); ?>" href="#"><?php echo esc_html( $single_group['detail']['displayName'] ); ?></a>
+															<a class="mwb-woo__accordian-heading <?php echo esc_attr( $single_group['detail']['name'] ); ?> <?php echo esc_attr( $anc_class ); ?>" href="javascript:void;"><?php echo esc_html( $single_group['detail']['label'] ); ?></a>
 															<?php
 													}
 													?>
@@ -192,7 +197,7 @@ if ( 1 == get_option( 'hubwoo_fields_setup_completed', 0 ) ) {
 															$acc_class = 'mwb-woo__accordion-content';
 														if ( 'created' == $single_group['status'] ) {
 															?>
-																<span class="grSuccess"><?php esc_html_e( 'Created', 'huboo' ); ?></span>
+																<span class="grSuccess"><?php esc_html_e( 'Created', 'makewebbetter-hubspot-for-woocommerce' ); ?></span>
 																<?php
 														} else {
 															$acc_class .= '-disable';

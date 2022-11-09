@@ -18,7 +18,6 @@
  *
  * @package    makewebbetter-hubspot-for-woocommerce
  * @subpackage makewebbetter-hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
  */
 class HubwooEcommProperties {
 
@@ -186,52 +185,52 @@ class HubwooEcommProperties {
 						'hubspotPropertyName'  => 'email',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'first_name',
+						'externalPropertyName' => 'firstname',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'firstname',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'last_name',
+						'externalPropertyName' => 'lastname',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'lastname',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_company',
+						'externalPropertyName' => 'company',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'company',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_phone',
+						'externalPropertyName' => 'phone',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'phone',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_mobile',
+						'externalPropertyName' => 'mobilephone',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'mobilephone',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_address_1',
+						'externalPropertyName' => 'address',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'address',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_city',
+						'externalPropertyName' => 'city',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'city',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_state',
+						'externalPropertyName' => 'state',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'state',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_country',
+						'externalPropertyName' => 'country',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'country',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'billing_postcode',
+						'externalPropertyName' => 'zip',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'zip',
 					);
@@ -240,24 +239,39 @@ class HubwooEcommProperties {
 
 				case 'PRODUCT':
 					$object_properties[] = array(
-						'externalPropertyName' => 'product_name',
+						'externalPropertyName' => 'name',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'name',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'product_image_url',
+						'externalPropertyName' => 'hs_images',
 						'dataType'             => 'AVATAR_IMAGE',
-						'hubspotPropertyName'  => 'ip__ecomm_bridge__image_url',
+						'hubspotPropertyName'  => 'hs_images',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'product_price',
+						'externalPropertyName' => 'price',
 						'dataType'             => 'NUMBER',
 						'hubspotPropertyName'  => 'price',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'product_description',
+						'externalPropertyName' => 'pr_description',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'description',
+					);
+					$object_properties[] = array(
+						'externalPropertyName' => 'store_product_id',
+						'dataType'             => 'NUMBER',
+						'hubspotPropertyName'  => 'store_product_id',
+					);
+					$object_properties[] = array(
+						'externalPropertyName' => 'product_source_store',
+						'dataType'             => 'STRING',
+						'hubspotPropertyName'  => 'product_source_store',
+					);
+					$object_properties[] = array(
+						'externalPropertyName' => 'hs_sku',
+						'dataType'             => 'STRING',
+						'hubspotPropertyName'  => 'hs_sku',
 					);
 
 					break;
@@ -279,42 +293,37 @@ class HubwooEcommProperties {
 						'hubspotPropertyName'  => 'closedate',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'order_date',
+						'externalPropertyName' => 'createdate',
 						'dataType'             => 'STRING',
 						'hubspotPropertyName'  => 'createdate',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'order_amount',
+						'externalPropertyName' => 'amount',
 						'dataType'             => 'NUMBER',
 						'hubspotPropertyName'  => 'amount',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'order_abandoned_cart_url',
-						'dataType'             => 'STRING',
-						'hubspotPropertyName'  => 'ip__ecomm_bridge__abandoned_cart_url',
-					);
-					$object_properties[] = array(
-						'externalPropertyName' => 'order_discount_amount',
+						'externalPropertyName' => 'discount_amount',
 						'dataType'             => 'NUMBER',
-						'hubspotPropertyName'  => 'ip__ecomm_bridge__discount_amount',
+						'hubspotPropertyName'  => 'discount_amount',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'order_id',
+						'externalPropertyName' => 'order_number',
 						'dataType'             => 'STRING',
-						'hubspotPropertyName'  => 'ip__ecomm_bridge__order_number',
+						'hubspotPropertyName'  => 'order_number',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'order_shipment_ids',
+						'externalPropertyName' => 'shipment_ids',
 						'dataType'             => 'STRING',
-						'hubspotPropertyName'  => 'ip__ecomm_bridge__shipment_ids',
+						'hubspotPropertyName'  => 'shipment_ids',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'order_tax_amount',
+						'externalPropertyName' => 'tax_amount',
 						'dataType'             => 'NUMBER',
-						'hubspotPropertyName'  => 'ip__ecomm_bridge__tax_amount',
+						'hubspotPropertyName'  => 'tax_amount',
 					);
 					$object_properties[] = array(
-						'externalPropertyName' => 'customer_note',
+						'externalPropertyName' => 'description',
 						'dataType'             => 'NUMBER',
 						'hubspotPropertyName'  => 'description',
 					);

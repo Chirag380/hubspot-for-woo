@@ -10,9 +10,17 @@
  */
 
 global $hubwoo;
-$deal_stages  = Hubwoo::get_all_deal_stages();
-$sync_data    = Hubwoo::get_sync_status();
-$display_data = Hubwoo::get_deals_presenter();
+$deal_stages       = Hubwoo::get_all_deal_stages();
+$sync_data         = Hubwoo::get_sync_status();
+$display_data      = Hubwoo::get_deals_presenter();
+$fetch_pipeline    = get_option( 'hubwoo_potal_pipelines', true );
+$selected_pipeline = get_option( 'hubwoo_ecomm_pipeline_id', true );
+$deal_stage_id     = 'stageId';
+
+if ( 'yes' == get_option( 'hubwoo_ecomm_pipeline_created', 'no' ) ) {
+	$deal_stage_id = 'id';
+}
+
 ?>
 <div class="hubwoo-form-wizard-wrapper">
 	<div class="hubwoo-form-wizard-content-wrapper">
@@ -29,7 +37,7 @@ $display_data = Hubwoo::get_deals_presenter();
 					?>
 			</p>
 		</div>
-		<div class="hubwoo-form-wizard-content hubwoo-deal-wrap-con" data-tab-content="ecommerce-pipleine-setup" style="display: <?php echo esc_attr( $display_data['view_mapping'] ); ?>">
+		<div class="hubwoo-form-wizard-content hubwoo-deal-wrap-con" data-tab-content="ecommerce-pipeline-setup" style="display: <?php echo esc_attr( $display_data['view_mapping'] ); ?>">
 			<div class="hubwoo-deal-wrap-con-flex">
 				<div class="hubwoo-deal-wrap-con__h-con">
 					<div class="hubwoo-fields-header hubwoo-common-header">
@@ -37,7 +45,7 @@ $display_data = Hubwoo::get_deals_presenter();
 						<input type="hidden" class="hubwoo-info" data-products="<?php echo esc_attr( $display_data['total_products'] ); ?>">
 					</div>
 					<div class="hubwoo-deal-wrap-con__intro" style="display: <?php echo esc_attr( $display_data['h_sync'] ); ?>">
-						<?php esc_html_e( 'Connect with HubSpot eCommerce pipleine to create deals for your WooCommerce orders. ', 'makewebbetter-hubspot-for-woocommerce' ); ?>
+						<?php esc_html_e( 'Connect with HubSpot eCommerce pipeline to create deals for your WooCommerce orders. ', 'makewebbetter-hubspot-for-woocommerce' ); ?>
 					</div>
 				</div>
 				<div class="hubwoo-deal-wrap-con__h-btn">
@@ -46,22 +54,24 @@ $display_data = Hubwoo::get_deals_presenter();
 					</a>
 				</div>					
 			</div>	
-			<div class="hubwoo-general-settings hubwoo-group-wrap__map_deal_stage ecommerce-pipleine-setup hubwoo-deal-wrap-con__store" style="display: <?php echo esc_attr( $display_data['view_mapping'] ); ?>">
-				<button class="hubwoo__btn manage_product_sync" data-action='run-ecomm-setup' style="display: <?php echo esc_attr( $display_data['view_btn_mapping'] ); ?>"> <?php esc_html_e( 'Run Setup', 'makewebbetter-hubspot-for-woocommerce' ); ?></button>		
+			<div class="hubwoo-general-settings hubwoo-group-wrap__map_deal_stage ecommerce-pipeline-setup hubwoo-deal-wrap-con__store" style="display: <?php echo esc_attr( $display_data['view_mapping'] ); ?>">
+				<button class="hubwoo__btn manage_product_sync" data-action='run-ecomm-setup' style="display: <?php echo isset( $display_data['view_btn_mapping'] ) ? esc_attr( $display_data['view_btn_mapping'] ) : ''; ?>"> <?php esc_html_e( 'Run Setup', 'makewebbetter-hubspot-for-woocommerce' ); ?></button>		
 				<div class="hubwoo-progress-wrap progress-cover " style="display: <?php echo esc_attr( $display_data['p_run_sync'] ); ?>">
-					<span class="psync_desc sync-desc" data-sync-type = "product" data-sync-eta = "<?php echo esc_attr( $display_data['eta_product_sync'] ); ?>">					
+					<span class="psync_desc sync-desc" data-sync-type = "product" data-sync-eta = "<?php echo isset( $display_data['eta_product_sync'] ) ? esc_attr( $display_data['eta_product_sync'] ) : ''; ?>">					
 						<?php
 							echo esc_textarea(
-								'Your products are syncing in the background so you can safely leave this page. It should take ' . $display_data['eta_product_sync'] . ' to complete.',
+								'Your products are syncing in the background so you can safely leave this page. It should take ' . isset( $display_data['eta_product_sync'] ) ? $display_data['eta_product_sync'] : '' . ' to complete.',
 								'makewebbetter-hubspot-for-woocommerce'
 							);
 							?>
-					</span>
+					</span>	
+					<button class="hubwoo__btn stop-ecomm-sync manage_product_sync" data-action="stop-product-sync"><?php esc_html_e( 'Stop', 'makewebbetter-hubspot-for-woocommerce' ); ?></button>
+
 					<div class="hubwoo-progress">
-						<div class="hubwoo-progress-bar" data-sync-type = "product" data-sync-status = "<?php echo esc_attr( $display_data['is_psync_running'] ); ?>" role="progressbar" data-percentage="<?php echo esc_attr( $display_data['percentage_done'] ); ?>" style="width: <?php echo esc_attr( $display_data['percentage_done'] ); ?>%">
-							<?php echo esc_textarea( $display_data['percentage_done'] ); ?>%
+						<div class="hubwoo-progress-bar" data-sync-type = "product" data-sync-status = "<?php echo esc_attr( $display_data['is_psync_running'] ); ?>" role="progressbar" data-percentage="<?php echo isset( $display_data['percentage_done'] ) ? esc_attr( $display_data['percentage_done'] ) : 0; ?>" style="width: <?php echo isset( $display_data['percentage_done'] ) ? esc_attr( $display_data['percentage_done'] ) : 0; ?>%">
+							<?php echo isset( $display_data['percentage_done'] ) ? esc_textarea( $display_data['percentage_done'] ) : 0; ?>%
 						</div>
-					</div> 
+					</div> 	
 				</div>
 			</div>										
 		</div>
@@ -86,53 +96,86 @@ $display_data = Hubwoo::get_deals_presenter();
 			</div>
 
 			<div class="hubwoo-general-settings hubwoo-group-wrap__map_deal_stage hubwoo-settings-container hubwoo-deal-wrap-con__store" style="display: <?php echo esc_attr( $display_data['view_mapping'] ); ?>">
-				<form action="#" method="post" class="hubwoo_save_ecomm_mapping">
-					<table class="hubwoo-deals-stages-conf-table form-table">
+				<div>
+					<table class="hubwoo-pipeline-stages-conf-table form-table">
 						<tr>
-						<th class="hubwoo-deal-wrap-con__thead"><?php esc_html_e( 'WooCommerce Order Status', 'makewebbetter-hubspot-for-woocommerce' ); ?></th>
-						<th><?php esc_html_e( 'Deal Stage', 'makewebbetter-hubspot-for-woocommerce' ); ?></th>
-						</tr>
-						<?php $all_order_statuses = wc_get_order_statuses(); ?>
-						<?php
-						foreach ( $all_order_statuses as $order_key => $order_label ) {
-							$stage = Hubwoo::get_selected_deal_stage( $order_key );
-							?>
-								<tr>
-									<th class="hubwoo-deal-wrap-con__thead">
-										<?php echo esc_html( $order_label ); ?>
-										<input type="hidden" name="hubwoo_woo_order_statuses[]" value="<?php echo esc_html( $order_key ); ?>">
-									</th>
-									<td>
-										<select class="hubwoo_ecomm_mapping" name="hubwoo_deal_stages[]">
-											<?php
-											if ( ! empty( $deal_stages ) ) {
-												foreach ( $deal_stages as $single_deal_stage ) {
-
-													if ( $single_deal_stage['stageId'] === $stage ) {
-														?>
-															<option value="<?php echo esc_attr( $single_deal_stage['stageId'] ); ?>" selected=""><?php echo esc_html( $single_deal_stage['label'] ); ?></option>
-															<?php
-													} else {
-														?>
-															<option value="<?php echo esc_attr( $single_deal_stage['stageId'] ); ?>"><?php echo esc_html( $single_deal_stage['label'] ); ?></option>
-															<?php
-													}
-												}
-											}
-											?>
-										</select>
-									</td>
-								</tr>
-							<?php
-						}
-						?>
-						<tr>
-							<td></td>
+							<th class="hubwoo-pipeline-wrap-con__thead"><?php esc_html_e( 'Select Pipeline', 'makewebbetter-hubspot-for-woocommerce' ); ?></th>
 							<td>
-								<button id="reset-deal-stages" class="hubwoo__btn hubwoo-btn--primary hubwoo-btn--dashboard" style="display: <?php echo esc_attr( $display_data['view_all'] ); ?>"><?php esc_html_e( ' Reset to Default Mapping', 'makewebbetter-hubspot-for-woocommerce' ); ?>
-								</button>
+								<select class="hubwoo_selected_pipeline" name="hubwoo_selected_pipeline">
+									<?php
+									if ( ! empty( $fetch_pipeline ) ) {
+										foreach ( $fetch_pipeline as $single_pipeline ) {
+
+											if ( $single_pipeline['id'] === $selected_pipeline ) {
+												?>
+													<option value="<?php echo esc_attr( $single_pipeline['id'] ); ?>" selected=""><?php echo esc_html( $single_pipeline['label'] ); ?></option>
+													<?php
+											} else {
+												?>
+													<option value="<?php echo esc_attr( $single_pipeline['id'] ); ?>"><?php echo esc_html( $single_pipeline['label'] ); ?></option>
+													<?php
+											}
+										}
+									}
+									?>
+								</select>
 							</td>
 						</tr>
+					</table>
+				</div>
+				<form action="#" method="post" class="hubwoo_save_ecomm_mapping">
+					<table class="hubwoo-deals-stages-conf-table form-table">
+						<thead>
+							<tr>
+								<th class="hubwoo-deal-wrap-con__thead"><?php esc_html_e( 'WooCommerce Order Status', 'makewebbetter-hubspot-for-woocommerce' ); ?></th>
+								<th><?php esc_html_e( 'Deal Stage', 'makewebbetter-hubspot-for-woocommerce' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php $all_order_statuses = wc_get_order_statuses(); ?>
+							<?php
+							foreach ( $all_order_statuses as $order_key => $order_label ) {
+								$stage = Hubwoo::get_selected_deal_stage( $order_key );
+								?>
+									<tr>
+										<th class="hubwoo-deal-wrap-con__thead">
+											<?php echo esc_html( $order_label ); ?>
+											<input type="hidden" name="hubwoo_woo_order_statuses[]" value="<?php echo esc_html( $order_key ); ?>">
+										</th>
+										<td>
+											<select class="hubwoo_ecomm_mapping" name="hubwoo_deal_stages[]">
+												<?php
+												if ( ! empty( $deal_stages ) ) {
+													foreach ( $deal_stages as $single_deal_stage ) {
+
+														if ( $single_deal_stage[ $deal_stage_id ] === $stage ) {
+															?>
+																<option value="<?php echo esc_attr( $single_deal_stage[ $deal_stage_id ] ); ?>" selected=""><?php echo esc_html( $single_deal_stage['label'] ); ?></option>
+																<?php
+														} else {
+															?>
+																<option value="<?php echo esc_attr( $single_deal_stage[ $deal_stage_id ] ); ?>"><?php echo esc_html( $single_deal_stage['label'] ); ?></option>
+																<?php
+														}
+													}
+												}
+												?>
+											</select>
+										</td>
+									</tr>
+								<?php
+							}
+							?>
+						</tbody>
+						<tfoot>
+							<tr>
+								<td></td>
+								<td>
+									<button id="reset-deal-stages" class="hubwoo__btn hubwoo-btn--primary hubwoo-btn--dashboard" style="display: <?php echo esc_attr( $display_data['view_all'] ); ?>"><?php esc_html_e( ' Reset to Default Mapping', 'makewebbetter-hubspot-for-woocommerce' ); ?>
+									</button>
+								</td>
+							</tr>
+						</tfoot>
 					</table>
 				</form>				
 			</div>									
@@ -159,7 +202,12 @@ $display_data = Hubwoo::get_deals_presenter();
 					<form method="POST" id="hubwoo_real_time_deal_settings" class="hubwoo_form_submitted">					
 						<?php
 						if ( empty( get_option( 'hubwoo_ecomm_won_stages', '' ) ) ) {
-							$stages = array_keys( Hubwoo_Admin::hubwoo_ecomm_get_stages() );
+							$stages = array_map(
+								function( $stage ) {
+									return strval( $stage );
+								},
+								array_keys( Hubwoo_Admin::hubwoo_ecomm_get_stages() )
+							);
 							update_option( 'hubwoo_ecomm_won_stages', $stages );
 						}
 							woocommerce_admin_fields( Hubwoo_Admin::hubwoo_ecomm_general_settings() );
@@ -187,13 +235,12 @@ $display_data = Hubwoo::get_deals_presenter();
 						</a>
 					</div>
 				</div>						
-
-				<div class="hubwoo-group-wrap__deal_ocs hubwoo-deal-wrap-con__store hubwoo-general-settings" style="display:<?php echo esc_attr( $display_data['message'] ); ?>">
+				<div data-txn="ocs-form" class="hubwoo-group-wrap__deal_ocs hubwoo-deal-wrap-con__store hubwoo-general-settings" style="display:<?php echo esc_attr( $display_data['message'] ); ?>">
 					<div class="hubwoo-group-wrap__deal_notice deals-par" data-type='pBar' style="display: <?php echo esc_attr( $display_data['message'] ); ?>">
-						<p class="hubwoo_deals_message sync-desc" data-sync-type = "order" data-sync-eta = "<?php echo esc_attr( $sync_data['eta_deals_sync'] ); ?>">
+						<p class="hubwoo_deals_message sync-desc" data-sync-type = "order" data-sync-eta = "<?php echo ( isset( $sync_data['eta_deals_sync'] ) && ! empty( $sync_data['eta_deals_sync'] ) ) ? esc_attr( $sync_data['eta_deals_sync'] ) : ''; ?>">
 							<?php
 								echo esc_textarea(
-									'Your orders are syncing as deals in the background so you can safely leave this page. It should take ' . $sync_data['eta_deals_sync'] . ' to complete.',
+									'Your orders are syncing as deals in the background so you can safely leave this page. It should take ' . ( isset( $sync_data['eta_deals_sync'] ) && ! empty( $sync_data['eta_deals_sync'] ) ) ? $sync_data['eta_deals_sync'] : '' . ' to complete.',
 									'makewebbetter-hubspot-for-woocommerce'
 								);
 								?>
@@ -202,8 +249,8 @@ $display_data = Hubwoo::get_deals_presenter();
 						<div class="manage-ocs-bar" >						
 							<div class="hubwoo-progress-wrap progress-cover deal-sync_progress" style="display: <?php echo esc_attr( $display_data['message'] ); ?>">
 								<div class="hubwoo-progress">
-									<div class="hubwoo-progress-bar" data-percentage= "<?php echo esc_attr( $sync_data['deals_progress'] ); ?>"  data-sync-type = "order" data-sync-status = "<?php echo esc_attr( $display_data['is_dsync'] ); ?>" role="progressbar" style="width: <?php echo esc_attr( $sync_data['deals_progress'] ); ?>%">
-										<?php echo esc_textarea( $sync_data['deals_progress'] ); ?>%
+									<div class="hubwoo-progress-bar" data-percentage= "<?php echo isset( $sync_data['deals_progress'] ) ? esc_attr( $sync_data['deals_progress'] ) : 0; ?>"  data-sync-type = "order" data-sync-status = "<?php echo esc_attr( $display_data['is_dsync'] ); ?>" role="progressbar" style="width: <?php echo isset( $sync_data['deals_progress'] ) ? esc_attr( $sync_data['deals_progress'] ) : 0; ?>%">
+										<?php echo isset( $sync_data['deals_progress'] ) ? esc_textarea( $sync_data['deals_progress'] ) : 0; ?>%
 									</div>
 								</div> 
 							</div>						
@@ -211,7 +258,12 @@ $display_data = Hubwoo::get_deals_presenter();
 						</div>
 					</div>				
 					<form method="POST" id="hubwoo_deals_ocs_form" class="hubwoo_form_submitted">					
-						<?php woocommerce_admin_fields( Hubwoo_Admin::hubwoo_ecomm_order_ocs_settings() ); ?>
+						<?php
+						if ( empty( get_option( 'hubwoo_ecomm_order_ocs_status', '' ) ) ) {
+							update_option( 'hubwoo_ecomm_order_ocs_status', array_keys( wc_get_order_statuses() ) );
+						}
+							woocommerce_admin_fields( Hubwoo_Admin::hubwoo_ecomm_order_ocs_settings() );
+						?>
 					</form>				
 				</div>		
 			</div>			

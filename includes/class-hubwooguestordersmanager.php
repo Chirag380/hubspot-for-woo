@@ -5,8 +5,8 @@
  * @link       https://makewebbetter.com/
  * @since      1.0.0
  *
- * @package    hubspot-for-woocommerce
- * @subpackage hubspot-for-woocommerce/includes
+ * @package    makewebbetter-hubspot-for-woocommerce
+ * @subpackage makewebbetter-hubspot-for-woocommerce/includes
  */
 
 /**
@@ -16,9 +16,8 @@
  * about guest contacts properties and there callback functions to
  * get value of that property.
  *
- * @package    hubspot-for-woocommerce
- * @subpackage hubspot-for-woocommerce/includes
- * @author     makewebbetter <webmaster@makewebbetter.com>
+ * @package    makewebbetter-hubspot-for-woocommerce
+ * @subpackage makewebbetter-hubspot-for-woocommerce/includes
  */
 
 require_once(plugin_dir_path(__DIR__).'const.php');
@@ -211,6 +210,17 @@ class HubwooGuestOrdersManager {
 		} else {
 			$optin = 'no';
 		}
+
+		$property_updated = get_option( 'hubwoo_newsletter_property_update', 'no' );
+
+		if ( ! empty( $property_updated ) && 'yes' == $property_updated ) {
+			if ( 'yes' == $optin ) {
+				$optin = true;
+			} else {
+				$optin = false;
+			}
+		}
+
 		$guest_user_properties[] = array(
 			'property' => 'newsletter_subscription',
 			'value'    => $optin,
@@ -721,6 +731,7 @@ class HubwooGuestOrdersManager {
 				'property' => 'last_total_number_of_products_bought',
 				'value'    => 0,
 			);
+
 			$guest_user_properties[] = array(
 				'property' => 'monetary_rating',
 				'value'    => 1,
@@ -780,6 +791,9 @@ class HubwooGuestOrdersManager {
 			$date->setTimezone( $timezone );
 			//phpcs:enable
 		} else {
+			$wptimezone = 'UTC';
+			$timezone = new DateTimeZone( $wptimezone );
+			$date->setTimezone( $timezone );
 			$date->modify( 'midnight' );
 		}
 		return $date->getTimestamp() * 1000;
