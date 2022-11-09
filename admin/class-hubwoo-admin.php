@@ -501,10 +501,10 @@ class Hubwoo_Admin {
 				'display'  => esc_html__( 'Once every 3 minutes for HubSpot products status', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 
-			$schedules['mwb-hubwoo-contacts-5min'] = array(
+			/*$schedules['mwb-hubwoo-contacts-5min'] = array(
 				'interval' => 5 * 60,
 				'display'  => esc_html__( 'Once every 5 minutes for HubSpot contacts sync', 'makewebbetter-hubspot-for-woocommerce' ),
-			);
+			);*/
 
             $schedules['mwb-hubwoo-contacts-2min'] = array(
                 'interval' => 2 * 60,
@@ -2032,8 +2032,6 @@ class Hubwoo_Admin {
 	 * @param bool $redirect redirect to contact page ( default = false).
 	 */
 	public static function hubwoo_schedule_sync_listener( $redirect = false ) {
-
-	    //self::create_custom_log('hubwoo_schedule_sync_listener');
 
 		$hubwoodatasync = new HubwooDataSync();
 

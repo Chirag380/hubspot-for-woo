@@ -882,11 +882,7 @@ class HubWooPropertyCallbacks {
         // if customer have orders.
 		if ( is_array( $customer_orders ) && count( $customer_orders ) ) {
 
-            //$this->create_custom_log('user_subs_data: '.$this->_contact_id.' ORDER: '.print_r( $customer_orders, true ));
-
             foreach ( $customer_orders as $counter => $order_id ) {
-
-                //$this->create_custom_log('order_id: '.$order_id);
 
 				// if order id not found let's check for another order.
 				if ( ! $order_id ) {
@@ -905,8 +901,6 @@ class HubWooPropertyCallbacks {
 				$subs_order = new WC_Subscription( $order_id );
 
 				$order_items = $order->get_items();
-
-                //$this->create_custom_log('order_id: '.$order_id.'; $order_items: '.count($order_items).'; status: '.$subs_order->get_status());
 
 				if ( is_array( $order_items ) && count( $order_items ) ) {
 

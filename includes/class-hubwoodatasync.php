@@ -385,8 +385,6 @@ class HubwooDataSync {
 				$properties      = $hubwoo_customer->get_contact_properties();
                 //self::create_custom_log('$properties: '.print_r($properties, true));
 				$user_properties = $hubwoo_customer->get_user_data_properties( $properties );
-
-				//self::create_custom_log('$user_properties: '.print_r($user_properties, true));
 				$properties_data = array(
 					'email'      => $email,
 					'properties' => $user_properties,

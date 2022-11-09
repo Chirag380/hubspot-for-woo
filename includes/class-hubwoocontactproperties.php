@@ -309,15 +309,11 @@ class HubWooContactProperties {
 			}
 		}
 
-        //$this->create_custom_log('$active_groups_properties: '.print_r($active_groups_properties, true));
-
 		if ( ! empty( $active_groups_properties ) ) {
 
 			$group_name = '';
 
 			$created_properties = get_option( 'hubwoo-properties-created', array() );
-
-            //$this->create_custom_log('$created_properties: '.print_r($created_properties, true));
 
 			foreach ( $active_groups_properties as $group_name_key => $single_group_property ) {
 
@@ -325,13 +321,7 @@ class HubWooContactProperties {
 
 				$filtered_properties = array();
 
-                //$this->create_custom_log('$group_name_zzz: '.$group_name);
-
 				foreach ( $single_group_property as $single_property ) {
-
-                    //$this->create_custom_log('$single_property: '.print_r($single_property, true));
-                    //$this->create_custom_log('$single_property[name]: ['.$single_property['name'].']');
-
                     // Fix: disable this condition as it always return false
 					//if ( isset( $single_property['name'] ) && in_array( $single_property['name'], $created_properties ) ) {
 						$filtered_properties[] = $single_property;
@@ -341,8 +331,6 @@ class HubWooContactProperties {
 				$all_filtered_properties[ $group_name ] = $filtered_properties;
 			}
 		}
-
-        //$this->create_custom_log('$all_filtered_properties: '.print_r($all_filtered_properties, true));
 
 		return apply_filters( 'hubwoo_active_groups_properties', $all_filtered_properties );
 	}

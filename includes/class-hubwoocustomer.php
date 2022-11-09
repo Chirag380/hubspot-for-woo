@@ -264,8 +264,6 @@ class HubWooCustomer {
 
 			foreach ( $modified_fields as $group_fields ) {
 
-                //$this->create_custom_log('$group_fields: '.print_r($group_fields, true));
-
 				if ( is_array( $group_fields ) ) {
 
 					foreach ( $group_fields as $field ) {
