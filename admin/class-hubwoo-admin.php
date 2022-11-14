@@ -689,8 +689,8 @@ class Hubwoo_Admin {
 	public function hubwoo_subs_groups( $values ) {
 
 		$values[] = array(
-            'name'        => site_prefix.'subscriptions_details',
-            'displayName' => __( site_prefix_u.'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
+			'name'        => site_prefix.'subscriptions_details',
+			'label' => __( site_prefix_u.'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
 		);
 
 		return $values;
@@ -704,7 +704,7 @@ class Hubwoo_Admin {
 	 */
 	public function hubwoo_active_subs_groups( $active_groups ) {
 
-        $active_groups[] = site_prefix.'subscriptions_details';
+		$active_groups[] = site_prefix.'subscriptions_details';
 
 		return $active_groups;
 	}
@@ -2318,27 +2318,7 @@ class Hubwoo_Admin {
 		return $mapped_array;
 	}
 
-    /**
-     * Create custom log.
-     *
-     * @param  string $message     hubspot log message.
-     */
-    public static function create_custom_log( $message ) {
-        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
-
-        if ( ! is_dir( $log_dir ) ) {
-
-            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
-        }
-
-        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
-            $message . PHP_EOL;
-
-        file_put_contents( $log_dir, $log, FILE_APPEND );
-    }
-
-
-    /**
+	/**
 	 * Updates the product whenever there is any change
 	 *
 	 * @since    1.0.0
@@ -2971,7 +2951,7 @@ class Hubwoo_Admin {
 		global $wpdb;
 		$table_name       = $wpdb->prefix . 'hubwoo_log';
 		$delete_timestamp = time() - ( 30 * 24 * 60 * 60 );
-		$query            = "DELETE FROM {$table_name} WHERE time < {$delete_timestamp}";
-		$wpdb->query( $query );
+		
+		$wpdb->get_results( $wpdb->prepare( 'DELETE FROM %1s WHERE time < %d', $table_name, $delete_timestamp ) );
 	}
 }

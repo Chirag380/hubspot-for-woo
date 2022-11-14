@@ -49,36 +49,6 @@ class Hubwoo_Public {
 		$this->version     = $version;
 	}
 
-    /**
-     * Create custom log.
-     *
-     * @param  string $message     hubspot log message.
-     */
-    public function create_custom_log( $message ) {
-        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
-
-        if ( ! is_dir( $log_dir ) ) {
-
-            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
-        }
-
-        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
-            $message . PHP_EOL;
-
-        file_put_contents( $log_dir, $log, FILE_APPEND );
-    }
-
-
-    /***
-     *
-     */
-    /*public function hubwoo_ensure_cron_schedule() {
-        if ( ! wp_next_scheduled( 'hubwoo_cron_schedule' ) ) {
-            $this->create_custom_log('[wp_schedule_event] at: ' . time());
-            wp_schedule_event( time(), 'mwb-hubwoo-contacts-5min', 'hubwoo_cron_schedule' );
-        }
-    }*/
-
 	/**
 	 * Update key as soon as user data is updated.
 	 *
@@ -990,5 +960,21 @@ class Hubwoo_Public {
 		} else {
 			update_post_meta( $order_id, 'hubwoo_preferred_language', $current_lang );
 		}
+	}
+
+	/**
+	 * Hide line item meta.
+	 *
+	 * @since 1.4.1
+	 */
+	public function hubwoo_hide_line_item_meta( $meta_data, $item ) {
+    	$new_meta = array();
+	    foreach ( $meta_data as $id => $meta_array ) {
+	        if ( 'hubwoo_ecomm_line_item_id' === $meta_array->key ) { 
+	        	continue; 
+	        }
+	        $new_meta[ $id ] = $meta_array;
+	    }
+	    return $new_meta;
 	}
 }

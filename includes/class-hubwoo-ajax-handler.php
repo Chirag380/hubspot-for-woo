@@ -533,33 +533,12 @@ if ( ! class_exists( 'HubWooAjaxHandler' ) ) {
 			wp_die();
 		}
 
-        /**
-         * Create custom log.
-         *
-         * @param  string $message     hubspot log message.
-         */
-        public function create_custom_log( $message ) {
-            $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
-
-            if ( ! is_dir( $log_dir ) ) {
-
-                @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
-            }
-
-            $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
-                $message . PHP_EOL;
-
-            file_put_contents( $log_dir, $log, FILE_APPEND );
-        }
-
-        /**
+		/**
 		 * Callback to sync contacts to hubspot in 1 click.
 		 *
 		 * @since 1.0.0
 		 */
 		public function hubwoo_ocs_instant_sync() {
-
-		    //$this->create_custom_log('hubwoo_ocs_instant_sync');
 
 			check_ajax_referer( 'hubwoo_security', 'hubwooSecurity' );
 
@@ -2211,8 +2190,8 @@ if ( ! class_exists( 'HubWooAjaxHandler' ) ) {
 
 			global $wpdb;
 			$table_name       = $wpdb->prefix . 'hubwoo_log';
-			$query            = "DELETE FROM {$table_name}";
-			$wpdb->query( $query );
+			
+			$wpdb->get_results( $wpdb->prepare( 'DELETE FROM %1s', $table_name ) );
 
 			$json_data = array(
 				'success'  => true,

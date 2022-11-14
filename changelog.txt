@@ -1,4 +1,7 @@
  *** MWB HubSpot for WooCommerce Changelog ***
+2022-11-10 - version 1.4.1
+* Fix - Minor Bug Fixes.
+
 2022-11-07 - version 1.4.0
 * Added - New API endpoints.
 

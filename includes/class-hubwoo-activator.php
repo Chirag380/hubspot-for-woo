@@ -38,8 +38,7 @@ if ( ! class_exists( 'Hubwoo_Activator' ) ) {
 
 			if ( ! as_next_scheduled_action( 'hubwoo_cron_schedule' ) ) {
 
-			    //chrg
-				as_schedule_recurring_action( time(), 300, 'hubwoo_cron_schedule' );
+				as_schedule_recurring_action( time(), 120, 'hubwoo_cron_schedule' );
 			}
 
 			if ( ! as_next_scheduled_action( 'hubwoo_deals_sync_check' ) ) {

@@ -73,7 +73,7 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 				$this->version = HUBWOO_VERSION;
 			} else {
 
-				$this->version = '1.4.0';
+				$this->version = '1.4.1';
 			}
 
 			$this->plugin_name = 'makewebbetter-hubspot-for-woocommerce';
@@ -320,9 +320,6 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 
 			if ( $this->is_plugin_enable() == 'yes' ) {
 
-			    // ensure the cron schedule is running
-                //$this->loader->add_action( 'init', $plugin_public, 'hubwoo_ensure_cron_schedule' );
-
 				$this->loader->add_action( 'profile_update', $plugin_public, 'hubwoo_woocommerce_save_account_details' );
 				$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'hubwoo_add_hs_script' );
 				$this->loader->add_action( 'user_register', $plugin_public, 'hubwoo_woocommerce_save_account_details' );
@@ -382,6 +379,8 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 				if ( in_array( 'sitepress-multilingual-cms/sitepress.php', $active_plugins ) ) {
 					$this->loader->add_action( 'woocommerce_thankyou', $plugin_public, 'hubwoo_update_user_prefered_lang' );
 				}
+
+				$this->loader->add_filter( 'woocommerce_order_item_get_formatted_meta_data', $plugin_public, 'hubwoo_hide_line_item_meta', 20, 2 );
 			}
 		}
 
@@ -555,7 +554,7 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 
 			if ( self::is_setup_completed() ) {
 
-				return get_option( 'hubwoo_pro_version', '1.4.0' );
+				return get_option( 'hubwoo_pro_version', '1.4.1' );
 			} else {
 
 				return HUBWOO_VERSION;
@@ -839,7 +838,7 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 
 					foreach ( $hubwoo_groups as $single_group ) {
 
-						if ( (site_prefix.'subscriptions_details') == $single_group['name'] && ! self::is_subs_group_setup_completed() ) {
+						if ( site_prefix.'subscriptions_details' == $single_group['name'] && ! self::is_subs_group_setup_completed() ) {
 
 							$final_groups[] = array(
 								'detail' => $single_group,
@@ -2790,8 +2789,8 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 		 */
 		public static function hubwoo_log_table_exists( $table_name ) {
 			global $wpdb;
-			$sql = "show tables like '$table_name'";
-			if ( $wpdb->get_var( $sql ) === $table_name ) {
+
+			if ( $wpdb->get_var( $wpdb->prepare('show tables like %s', $wpdb->esc_like( $table_name ) ) ) === $table_name ) {
 				return 'exists';
 			} else {
 				return false;
@@ -2816,17 +2815,16 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 			$crm_object = $slug . '_object';
 
 			global $wpdb;
-			$query = "CREATE TABLE IF NOT EXISTS $crm_log_table (
+			$wpdb->get_results( $wpdb->prepare( 
+				'CREATE TABLE IF NOT EXISTS %1s (
 	            `id` int(11) NOT NULL AUTO_INCREMENT,
-	            `$crm_object` varchar(255) NOT NULL,
+	            `%1s` varchar(255) NOT NULL,
 	            `event` varchar(255) NOT NULL,
 	            `request` text NOT NULL,
 	            `response` text NOT NULL,
 	            `time` int(11) NOT NULL,
 	            PRIMARY KEY (`id`)
-	          ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
-
-			$wpdb->query( $query );
+	          ) ENGINE=InnoDB DEFAULT CHARSET=utf8;', $crm_log_table, $crm_object ) );
 		}
 
 		/**
@@ -2846,19 +2844,19 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 
 			if ( $all ) {
 
-				$log_data = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table_name} ORDER BY `id` DESC" ), ARRAY_A ); // @codingStandardsIgnoreLine.
+				$log_data = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s ORDER BY `id` DESC', $table_name ), ARRAY_A ); // @codingStandardsIgnoreLine.
 				return $log_data;
 
 			}
 
 			if ( ! $search_value ) {
 
-				$log_data    = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table_name} ORDER BY `id` DESC LIMIT %d OFFSET %d ", $limit, $offset ), ARRAY_A ); // @codingStandardsIgnoreLine.
+				$log_data    = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s ORDER BY `id` DESC LIMIT %d OFFSET %d ', $table_name, $limit, $offset ), ARRAY_A ); // @codingStandardsIgnoreLine.
 				return $log_data;
 
 			}
 
-			$log_data    = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE `hubwoo_object` = %s ORDER BY `id` DESC", $search_value ), ARRAY_A ); // @codingStandardsIgnoreLine.
+			$log_data    = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE `hubwoo_object` = %s ORDER BY `id` DESC', $table_name, $search_value ), ARRAY_A ); // @codingStandardsIgnoreLine.
 
 			return $log_data;
 		}
@@ -2871,7 +2869,9 @@ if ( ! class_exists( 'Hubwoo' ) ) {
 		public static function hubwoo_get_total_log_count() {
 			global $wpdb;
 			$table_name = $wpdb->prefix . 'hubwoo_log';
-			$count = $wpdb->get_col( "SELECT COUNT(*) as `total_count` FROM {$table_name}" ); // @codingStandardsIgnoreLine.
+
+			$count = $wpdb->get_results( $wpdb->prepare( 'SELECT COUNT(*) as `total_count` FROM %1s', $table_name ) ); // @codingStandardsIgnoreLine.
+			$count[0] = $count[0]->total_count;
 			return $count;
 		}
 

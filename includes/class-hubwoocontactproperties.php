@@ -183,7 +183,7 @@ class HubWooContactProperties {
 			// skus bought details.
 			$values[] = array(
 				'name'        => site_prefix.'skus_bought',
-				'displayName' => __( site_prefix_u.'SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
+				'label' => __( site_prefix_u.'SKUs Bought', 'makewebbetter-hubspot-for-woocommerce' ),
 			);
 			// roi tracking.
 			$values[] = array(
@@ -225,7 +225,7 @@ class HubWooContactProperties {
 
 		$values[] = array(
 			'name'        => site_prefix.'subscriptions_details',
-			'displayName' => __( site_prefix_u.'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
+			'label' => __( site_prefix_u.'Subscriptions Details', 'makewebbetter-hubspot-for-woocommerce' ),
 		);
 		return apply_filters( 'hubwoo_subs_groups', $values );
 	}
@@ -261,27 +261,7 @@ class HubWooContactProperties {
 		return apply_filters( 'hubwoo_active_groups_properties', $active_groups_properties );
 	}
 
-    /**
-     * Create custom log.
-     *
-     * @param  string $message     hubspot log message.
-     */
-    public function create_custom_log( $message ) {
-        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
-
-        if ( ! is_dir( $log_dir ) ) {
-
-            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
-        }
-
-        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
-            $message . PHP_EOL;
-
-        file_put_contents( $log_dir, $log, FILE_APPEND );
-    }
-
-
-    /**
+	/**
 	 * Filter extra properties to avaoid error on hubspot.
 	 *
 	 * @return only created properties
@@ -294,8 +274,6 @@ class HubWooContactProperties {
 		$all_filtered_properties = array();
 
 		$active_groups = $this->get_active_groups();
-
-		//$this->create_custom_log('$active_groups: '.print_r($active_groups, true));
 
 		if ( is_array( $active_groups ) && count( $active_groups ) ) {
 
@@ -326,10 +304,11 @@ class HubWooContactProperties {
 				$filtered_properties = array();
 
 				foreach ( $single_group_property as $single_property ) {
-                    // Fix: disable this condition as it always return false
-					//if ( isset( $single_property['name'] ) && in_array( $single_property['name'], $created_properties ) ) {
+
+					if ( isset( $single_property['name'] ) && in_array( $single_property['name'], $created_properties ) ) {
+
 						$filtered_properties[] = $single_property;
-					//}
+					}
 				}
 
 				$all_filtered_properties[ $group_name ] = $filtered_properties;

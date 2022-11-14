@@ -75,8 +75,8 @@ class HubWooPropertyCallbacks {
 		'billing_postal_code'                      => 'get_user_meta',
 		'billing_country'                          => 'get_user_meta',
 
-		site_prefix.'skus_bought'                  => 'hubwoo_user_meta',
-		site_prefix.'last_skus_bought'             => 'hubwoo_user_meta',
+        site_prefix.'skus_bought'                              => 'hubwoo_user_meta',
+        site_prefix.'last_skus_bought'                         => 'hubwoo_user_meta',
 
 		'categories_bought'                        => 'hubwoo_user_meta',
 		'last_categories_bought'                   => 'hubwoo_user_meta',
@@ -124,20 +124,20 @@ class HubWooPropertyCallbacks {
 		'products_bought'                          => 'hubwoo_user_meta',
 		'total_number_of_products_bought'          => 'hubwoo_user_meta',
 
-		site_prefix.'last_subscription_order_number'           => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_parent_order_number'    => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_order_status'           => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_order_creation_date'    => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_order_paid_date'        => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_order_completed_date'   => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_trial_end_date'         => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_next_payment_date'      => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_billing_period'         => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_billing_interval'       => 'hubwoo_user_subs_data',
-		site_prefix.'last_subscription_products'               => 'hubwoo_user_subs_data',
-		site_prefix.'related_last_order_creation_date'         => 'hubwoo_user_subs_data',
-		site_prefix.'related_last_order_paid_date'             => 'hubwoo_user_subs_data',
-		site_prefix.'related_last_order_completed_date'        => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_order_number'           => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_parent_order_number'    => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_order_status'           => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_order_creation_date'    => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_order_paid_date'        => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_order_completed_date'   => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_trial_end_date'         => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_next_payment_date'      => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_billing_period'         => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_billing_interval'       => 'hubwoo_user_subs_data',
+        site_prefix.'last_subscription_products'               => 'hubwoo_user_subs_data',
+        site_prefix.'related_last_order_creation_date'         => 'hubwoo_user_subs_data',
+        site_prefix.'related_last_order_paid_date'             => 'hubwoo_user_subs_data',
+        site_prefix.'related_last_order_completed_date'        => 'hubwoo_user_subs_data',
         site_prefix.'active_subscription_skus'                 => 'hubwoo_user_subs_data',
         site_prefix.'cancelled_subscription_skus'              => 'hubwoo_user_subs_data',
         site_prefix.'subscription_synced'                      => 'hubwoo_user_subs_data',
@@ -285,13 +285,10 @@ class HubWooPropertyCallbacks {
 	 */
 	public function hubwoo_user_meta( $key ) {
 
-	    // disable caching
-        /*
 		if ( array_key_exists( $key, $this->_cache ) ) {
 
 			return $this->_cache[ $key ];
 		}
-        */
 
 		$order_statuses = get_option( 'hubwoo-selected-order-status', array() );
 
@@ -832,26 +829,7 @@ class HubWooPropertyCallbacks {
 		}
 	}
 
-    /**
-     * Create custom log.
-     *
-     * @param  string $message     hubspot log message.
-     */
-    public function create_custom_log( $message ) {
-        $log_dir = WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log';
-
-        if ( ! is_dir( $log_dir ) ) {
-
-            @fopen( WC_LOG_DIR . 'hubspot-for-woocommerce-logs.log', 'a' );
-        }
-
-        $log = '---------- ' . current_time( 'F j, Y  g:i a' ) . PHP_EOL .
-            $message . PHP_EOL;
-
-        file_put_contents( $log_dir, $log, FILE_APPEND );
-    }
-
-    /**
+	/**
 	 * Contact subscriptions data.
 	 *
 	 * @param  string $key for subscription properties.
@@ -865,9 +843,7 @@ class HubWooPropertyCallbacks {
 		}
 
 		if ( array_key_exists( $key, $this->_cache ) ) {
-		    if ($key == site_prefix.'active_subscription_skus') {
-                $this->create_custom_log('found cached key: ' . $key . ' > value: ' . $this->_cache[$key]);
-            }
+
 			//return $this->_cache[ $key ];
 		}
 
@@ -876,7 +852,7 @@ class HubWooPropertyCallbacks {
 		$customer_orders = $query->query(
 			array(
 				'post_type'           => 'shop_subscription',
-				'posts_per_page'      => -1,
+				'posts_per_page'      => 1,
 				'post_status'         => 'any',
 				'orderby'             => 'date',
 				'order'               => 'desc',
@@ -892,17 +868,15 @@ class HubWooPropertyCallbacks {
 			)
 		);
 
-        $this->create_custom_log('user_subs_data: '.$this->_contact_id.' ORDER: '.print_r( $customer_orders, true ));
-
         // hold all active subs skus
         $active_subs_skus = array();
         // hold all cancelled subs skus
         $cancelled_subs_skus = array();
 
-        // if customer have orders.
+		// if customer have orders.
 		if ( is_array( $customer_orders ) && count( $customer_orders ) ) {
 
-            foreach ( $customer_orders as $counter => $order_id ) {
+			foreach ( $customer_orders as $counter => $order_id ) {
 
 				// if order id not found let's check for another order.
 				if ( ! $order_id ) {
@@ -1004,7 +978,7 @@ class HubWooPropertyCallbacks {
 
 				if ( ! empty( $order_data['schedule_next_payment'] ) && $order_data['schedule_next_payment'] instanceof WC_DateTime ) {
 
-					$this->_cache[site_prefix.'last_subscription_next_payment_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_end']->getTimestamp() );
+					$this->_cache[site_prefix.'last_subscription_next_payment_date'] = HubwooGuestOrdersManager::hubwoo_set_utc_midnight( $order_data['schedule_next_payment']->getTimestamp() );
 				}
 
 				$this->_cache[site_prefix.'last_subscription_order_status'] = 'wc-' . $subs_order->get_status();
@@ -1059,7 +1033,7 @@ class HubWooPropertyCallbacks {
 
 				$this->_cache[site_prefix.'last_subscription_billing_interval'] = ! empty( $subs_order->get_billing_interval() ) ? $subs_order->get_billing_interval() : '';
 			}
-        }
+		}
 
         if (count($active_subs_skus)) {
             $this->_cache[site_prefix.'active_subscription_skus'] = HubwooGuestOrdersManager::hubwoo_format_array( $active_subs_skus );

@@ -58,12 +58,18 @@ if ( 'yes' == get_option( 'hubwoo_ecomm_pipeline_created', 'no' ) ) {
 				<button class="hubwoo__btn manage_product_sync" data-action='run-ecomm-setup' style="display: <?php echo isset( $display_data['view_btn_mapping'] ) ? esc_attr( $display_data['view_btn_mapping'] ) : ''; ?>"> <?php esc_html_e( 'Run Setup', 'makewebbetter-hubspot-for-woocommerce' ); ?></button>		
 				<div class="hubwoo-progress-wrap progress-cover " style="display: <?php echo esc_attr( $display_data['p_run_sync'] ); ?>">
 					<span class="psync_desc sync-desc" data-sync-type = "product" data-sync-eta = "<?php echo isset( $display_data['eta_product_sync'] ) ? esc_attr( $display_data['eta_product_sync'] ) : ''; ?>">					
-						<?php
-							echo esc_textarea(
-								'Your products are syncing in the background so you can safely leave this page. It should take ' . isset( $display_data['eta_product_sync'] ) ? $display_data['eta_product_sync'] : '' . ' to complete.',
-								'makewebbetter-hubspot-for-woocommerce'
-							);
-							?>
+					<?php
+						echo esc_textarea(
+							'Your products are syncing in the background so you can safely leave this page. It should take ',
+							'makewebbetter-hubspot-for-woocommerce'
+						);
+						?>
+					<?php
+						echo esc_attr( $display_data['eta_product_sync'] );
+					?>
+					<?php
+						echo esc_textarea( ' to complete.',	'makewebbetter-hubspot-for-woocommerce'	);
+					?>
 					</span>	
 					<button class="hubwoo__btn stop-ecomm-sync manage_product_sync" data-action="stop-product-sync"><?php esc_html_e( 'Stop', 'makewebbetter-hubspot-for-woocommerce' ); ?></button>
 
@@ -238,12 +244,18 @@ if ( 'yes' == get_option( 'hubwoo_ecomm_pipeline_created', 'no' ) ) {
 				<div data-txn="ocs-form" class="hubwoo-group-wrap__deal_ocs hubwoo-deal-wrap-con__store hubwoo-general-settings" style="display:<?php echo esc_attr( $display_data['message'] ); ?>">
 					<div class="hubwoo-group-wrap__deal_notice deals-par" data-type='pBar' style="display: <?php echo esc_attr( $display_data['message'] ); ?>">
 						<p class="hubwoo_deals_message sync-desc" data-sync-type = "order" data-sync-eta = "<?php echo ( isset( $sync_data['eta_deals_sync'] ) && ! empty( $sync_data['eta_deals_sync'] ) ) ? esc_attr( $sync_data['eta_deals_sync'] ) : ''; ?>">
-							<?php
+						<?php
 								echo esc_textarea(
-									'Your orders are syncing as deals in the background so you can safely leave this page. It should take ' . ( isset( $sync_data['eta_deals_sync'] ) && ! empty( $sync_data['eta_deals_sync'] ) ) ? $sync_data['eta_deals_sync'] : '' . ' to complete.',
+									'Your orders are syncing as deals in the background so you can safely leave this page. It should take ',
 									'makewebbetter-hubspot-for-woocommerce'
 								);
 								?>
+							<?php
+								echo esc_attr( $sync_data['eta_deals_sync'] );
+							?>
+							<?php 
+								echo esc_textarea( ' to complete.', 'makewebbetter-hubspot-for-woocommerce' ); 
+							?>
 
 						</p>
 						<div class="manage-ocs-bar" >						
